@@ -496,19 +496,6 @@ public class Mirror {
 	}
 
 	/**
-	 * FIXME: does this method make any sense?
-	 *
-	 * @param member an instance of {@link Member}
-	 * @return {@literal true} if the supplied {@link Member member} is an {@literal interface}
-	 * @see Modifier#isInterface(int)
-	 */
-	public static boolean isInterface(final Member member) {
-		final var modifiers = member.getModifiers();
-
-		return Modifier.isInterface(modifiers);
-	}
-
-	/**
 	 * @param member an instance of {@link Member}
 	 * @return {@literal true} if the supplied {@link Member member} is abstract
 	 * @see Modifier#isAbstract(int)

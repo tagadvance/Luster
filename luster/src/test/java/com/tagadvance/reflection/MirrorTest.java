@@ -427,11 +427,6 @@ class MirrorTest {
 	}
 
 	@Test
-	void isInterface() {
-		// TODO
-	}
-
-	@Test
 	void isAbstractMember() {
 		final var count = Stream.of(AbstractClassFoo.class)
 			.flatMap(M::getMethods)
