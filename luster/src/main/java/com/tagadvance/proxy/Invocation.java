@@ -2,11 +2,12 @@ package com.tagadvance.proxy;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.UndeclaredThrowableException;
 
-public record Invocation<I>(Object proxy, Method method, I instance, Object[] args) {
+public record Invocation(Object proxy, Method method, Object instance, Object[] args) {
 
 	// TODO: unit test unrwap
-	public Object invoke() throws Throwable {
+	public Object call() throws Throwable {
 		try {
 			return method.invoke(instance, args);
 		} catch (final InvocationTargetException e) {
