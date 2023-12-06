@@ -41,7 +41,7 @@ public interface CheckedPredicate<I, T extends Throwable> extends Predicate<I> {
 	 * @return the {@link Predicate} wrapper
 	 */
 	static <T, E extends Throwable> Predicate<T> of(final CheckedPredicate<T, E> predicate) {
-		return predicate::test;
+		return predicate;
 	}
 
 }

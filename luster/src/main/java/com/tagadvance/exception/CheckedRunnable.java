@@ -34,7 +34,7 @@ public interface CheckedRunnable<T extends Throwable> extends Runnable {
 	 * @return the {@link Runnable} wrapper
 	 */
 	static <E extends Throwable> Runnable of(final CheckedRunnable<E> runnable) {
-		return runnable::run;
+		return runnable;
 	}
 
 }

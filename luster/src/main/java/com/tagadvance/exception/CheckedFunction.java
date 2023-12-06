@@ -42,7 +42,7 @@ public interface CheckedFunction<I, R, T extends Throwable> extends Function<I, 
 	 * @return the {@link Function} wrapper
 	 */
 	static <T, R, E extends Throwable> Function<T, R> of(final CheckedFunction<T, R, E> function) {
-		return function::apply;
+		return function;
 	}
 
 }

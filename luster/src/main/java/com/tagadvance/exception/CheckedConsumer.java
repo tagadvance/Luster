@@ -39,7 +39,7 @@ public interface CheckedConsumer<I, T extends Throwable> extends Consumer<I> {
 	 * @return the {@link Consumer} wrapper
 	 */
 	static <I, T extends Throwable> Consumer<I> of(final CheckedConsumer<I, T> consumer) {
-		return consumer::accept;
+		return consumer;
 	}
 
 }

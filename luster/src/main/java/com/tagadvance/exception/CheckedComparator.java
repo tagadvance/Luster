@@ -42,7 +42,7 @@ public interface CheckedComparator<I, T extends Throwable> extends Comparator<I>
 	 * @return the {@link Comparator} wrapper
 	 */
 	static <I, T extends Throwable> Comparator<I> of(final CheckedComparator<I, T> comparator) {
-		return comparator::compare;
+		return comparator;
 	}
 
 }
