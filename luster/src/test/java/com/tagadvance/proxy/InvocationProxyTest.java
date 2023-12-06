@@ -1,10 +1,11 @@
 package com.tagadvance.proxy;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.tagadvance.chain.DisposableChain;
+import com.tagadvance.exception.UncheckedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -25,11 +26,23 @@ public class InvocationProxyTest {
 	@Test
 	public void testRuntimeExceptionIsForwarded() {
 		final String expectedMessage = "foo";
-		final var exception = Assertions.assertThrows(RuntimeException.class,
+		final var exception = assertThrows(RuntimeException.class,
 			() -> InvocationProxy.createProxy(Runnable.class, () -> {
 				throw new RuntimeException(expectedMessage);
 			}, Invocation::call).run());
 		assertEquals(expectedMessage, exception.getMessage());
+	}
+
+	@Test
+	public void testUndeclaredThrowableExceptionIsNotThrown() {
+		assertThrows(UncheckedExecutionException.class,
+			() -> InvocationProxy.createProxy(Runnable.class, () -> {
+			}, invocation -> {
+				// force an IllegalAccessException
+				InvocationProxy.class.getDeclaredConstructor().newInstance();
+
+				return null;
+			}).run());
 	}
 
 }
