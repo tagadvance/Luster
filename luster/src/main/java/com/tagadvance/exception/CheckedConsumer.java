@@ -3,29 +3,29 @@ package com.tagadvance.exception;
 import java.util.function.Consumer;
 
 /**
- * A {@link Consumer} that throws an exception of type {@link E}.
+ * A {@link Consumer} that throws an exception of type {@link T}.
  *
- * @param <T> the type of the input to the operation
- * @param <E> the type of exception that may be thrown by this consumer
+ * @param <I> the type of the input to the operation
+ * @param <T> the type of exception that may be thrown by this consumer
  */
 @FunctionalInterface
-public interface CheckedConsumer<T, E extends Exception> extends Consumer<T> {
+public interface CheckedConsumer<I, T extends Throwable> extends Consumer<I> {
 
 	/**
 	 * This method is like {@link Consumer#accept(Object)} except that it may throw an exception of
-	 * type {@link E}.
+	 * type {@link T}.
 	 *
-	 * @param t the input argument
-	 * @throws E the type of exception that may be thrown
+	 * @param i the input argument
+	 * @throws T the type of exception that may be thrown
 	 */
-	void acceptChecked(T t) throws E;
+	void acceptChecked(I i) throws T;
 
 	@Override
-	default void accept(T t) throws UncheckedExecutionException {
+	default void accept(I i) throws UncheckedExecutionException {
 		try {
-			acceptChecked(t);
-		} catch (final Exception e) {
-			throw new UncheckedExecutionException(e);
+			acceptChecked(i);
+		} catch (final Throwable T) {
+			throw new UncheckedExecutionException(T);
 		}
 	}
 
@@ -34,11 +34,11 @@ public interface CheckedConsumer<T, E extends Exception> extends Consumer<T> {
 	 * automatically re-throws checked exceptions as {@link UncheckedExecutionException}.
 	 *
 	 * @param consumer a {@link CheckedConsumer}
-	 * @param <T>      the type of the input to the operation
-	 * @param <E>      the type of exception that may be thrown
+	 * @param <I>      the type of the input to the operation
+	 * @param <T>      the type of exception that may be thrown
 	 * @return the {@link Consumer} wrapper
 	 */
-	static <T, E extends Exception> Consumer<T> of(final CheckedConsumer<T, E> consumer) {
+	static <I, T extends Throwable> Consumer<I> of(final CheckedConsumer<I, T> consumer) {
 		return consumer::accept;
 	}
 

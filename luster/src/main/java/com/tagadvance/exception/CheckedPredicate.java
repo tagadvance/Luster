@@ -3,31 +3,31 @@ package com.tagadvance.exception;
 import java.util.function.Predicate;
 
 /**
- * A {@link Predicate} that throws an exception of type {@link E}.
+ * A {@link Predicate} that throws an exception of type {@link T}.
  *
- * @param <T> the type of the input to the predicate
- * @param <E> the type of exception that may be thrown by this predicate
+ * @param <I> the type of the input to the predicate
+ * @param <T> the type of exception that may be thrown by this predicate
  */
 @FunctionalInterface
-public interface CheckedPredicate<T, E extends Exception> extends Predicate<T> {
+public interface CheckedPredicate<I, T extends Throwable> extends Predicate<I> {
 
 	/**
 	 * This method is like {@link Predicate#test(Object)}} except that it may throw an exception of
-	 * type {@link E}.
+	 * type {@link T}.
 	 *
-	 * @param t the input argument
+	 * @param i the input argument
 	 * @return {@literal true} if the input argument matches the predicate, otherwise
 	 * {@literal false}
-	 * @throws E the type of exception that may be thrown
+	 * @throws T the type of exception that may be thrown
 	 */
-	boolean testChecked(T t) throws E;
+	boolean testChecked(I i) throws T;
 
 	@Override
-	default boolean test(T t) throws UncheckedExecutionException {
+	default boolean test(I i) throws UncheckedExecutionException {
 		try {
-			return testChecked(t);
-		} catch (final Exception e) {
-			throw new UncheckedExecutionException(e);
+			return testChecked(i);
+		} catch (final Throwable t) {
+			throw new UncheckedExecutionException(t);
 		}
 	}
 
@@ -40,7 +40,7 @@ public interface CheckedPredicate<T, E extends Exception> extends Predicate<T> {
 	 * @param <E>       the type of exception that may be thrown
 	 * @return the {@link Predicate} wrapper
 	 */
-	static <T, E extends Exception> Predicate<T> of(final CheckedPredicate<T, E> predicate) {
+	static <T, E extends Throwable> Predicate<T> of(final CheckedPredicate<T, E> predicate) {
 		return predicate::test;
 	}
 

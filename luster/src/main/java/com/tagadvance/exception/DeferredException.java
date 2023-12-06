@@ -41,8 +41,8 @@ public final class DeferredException {
 		return () -> {
 			try {
 				return callable.call();
-			} catch (final Exception e) {
-				handler.handleException(e);
+			} catch (final Throwable t) {
+				handler.handleException(t);
 			}
 
 			return defaultValue.get();
@@ -54,17 +54,17 @@ public final class DeferredException {
 	 * automatically defers checked exceptions to the {@link ExceptionHandler}.
 	 *
 	 * @param runnable a {@link CheckedRunnable}
-	 * @param <E>      the type of exception that may be thrown
+	 * @param <T>      the type of exception that may be thrown
 	 * @return the {@link Runnable} wrapper
 	 */
-	public <E extends Exception> Runnable runnable(final CheckedRunnable<E> runnable) {
+	public <T extends Throwable> Runnable runnable(final CheckedRunnable<T> runnable) {
 		requireNonNull(runnable, "runnable must not be null");
 
 		return () -> {
 			try {
 				runnable.runChecked();
-			} catch (final Exception e) {
-				handler.handleException(e);
+			} catch (final Throwable t) {
+				handler.handleException(t);
 			}
 		};
 	}
@@ -74,18 +74,18 @@ public final class DeferredException {
 	 * automatically defers checked exceptions to the {@link ExceptionHandler}.
 	 *
 	 * @param consumer a {@link CheckedConsumer}
-	 * @param <T>      the type of the input to the operation
-	 * @param <E>      the type of exception that may be thrown
+	 * @param <I>      the type of the input to the operation
+	 * @param <T>      the type of exception that may be thrown
 	 * @return a {@link Consumer} wrapper
 	 */
-	public <T, E extends Exception> Consumer<T> consumer(final CheckedConsumer<T, E> consumer) {
+	public <I, T extends Throwable> Consumer<I> consumer(final CheckedConsumer<I, T> consumer) {
 		requireNonNull(consumer, "consumer must not be null");
 
 		return v -> {
 			try {
 				consumer.acceptChecked(v);
-			} catch (final Exception e) {
-				handler.handleException(e);
+			} catch (final Throwable t) {
+				handler.handleException(t);
 			}
 		};
 	}
@@ -95,13 +95,13 @@ public final class DeferredException {
 	 * {@literal defaultValue} {@link Supplier} that always returns {@literal null}.
 	 *
 	 * @param function a {@link CheckedFunction}
-	 * @param <T>      the type of the input to the function
+	 * @param <I>      the type of the input to the function
 	 * @param <R>      the type of the result of the function
-	 * @param <E>      the type of exception that may be thrown
+	 * @param <T>      the type of exception that may be thrown
 	 * @return a {@link Function} wrapper
 	 */
-	public <T, R, E extends Exception> Function<T, R> function(
-		final CheckedFunction<T, R, E> function) {
+	public <I, R, T extends Throwable> Function<I, R> function(
+		final CheckedFunction<I, R, T> function) {
 		return function(function, () -> null);
 	}
 
@@ -111,21 +111,21 @@ public final class DeferredException {
 	 *
 	 * @param function     a {@link CheckedFunction}
 	 * @param defaultValue a default value {@link Supplier} to use in the event of an exception
-	 * @param <T>          the type of the input to the function
+	 * @param <I>          the type of the input to the function
 	 * @param <R>          the type of the result of the function
-	 * @param <E>          the type of exception that may be thrown
+	 * @param <T>          the type of exception that may be thrown
 	 * @return a {@link Function} wrapper
 	 */
-	public <T, R, E extends Exception> Function<T, R> function(
-		final CheckedFunction<T, R, E> function, final Supplier<R> defaultValue) {
+	public <I, R, T extends Throwable> Function<I, R> function(
+		final CheckedFunction<I, R, T> function, final Supplier<R> defaultValue) {
 		requireNonNull(function, "function must not be null");
 		requireNonNull(defaultValue, "defaultValue must not be null");
 
-		return t -> {
+		return i -> {
 			try {
-				return function.applyChecked(t);
-			} catch (final Exception e) {
-				handler.handleException(e);
+				return function.applyChecked(i);
+			} catch (final Throwable t) {
+				handler.handleException(t);
 			}
 
 			return defaultValue.get();
@@ -163,8 +163,8 @@ public final class DeferredException {
 		return v -> {
 			try {
 				return predicate.testChecked(v);
-			} catch (final Exception e) {
-				handler.handleException(e);
+			} catch (final Throwable t) {
+				handler.handleException(t);
 			}
 
 			return defaultValue.get();
@@ -180,9 +180,9 @@ public final class DeferredException {
 		/**
 		 * This method is invoked when an exception is caught by a deferred wrapper.
 		 *
-		 * @param e the exception
+		 * @param t the exception
 		 */
-		void handleException(Exception e);
+		void handleException(Throwable t);
 
 	}
 
