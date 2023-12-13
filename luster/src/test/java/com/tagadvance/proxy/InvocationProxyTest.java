@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Test for {@link InvocationProxy}.
  */
-public class InvocationProxyTest {
+class InvocationProxyTest {
 
 	@Test
 	public void testOnInvocation() {

@@ -2,14 +2,13 @@ package com.tagadvance.chain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.tagadvance.proxy.InvocationProxy;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 /**
  * Test for {@link DisposableChain}.
  */
-public class DisposableChainTest {
+class DisposableChainTest {
 
 	// TODO: test only works once
 

@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Test for {@link InvocationTest}.
  */
-public class InvocationTest {
+class InvocationTest {
 
 	@Test
 	public void testInvoke() throws Throwable {

@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Test for {@link ReusableChain}.
  */
-public class ReusableChainTest {
+class ReusableChainTest {
 
 	// TODO: test reusable
 
