@@ -4,6 +4,9 @@ import static java.util.Objects.requireNonNull;
 
 import java.lang.reflect.Proxy;
 
+/**
+ * Create {@link Proxy proxies} with an {@link InvocationCallback invocation callback}.
+ */
 public class InvocationProxy {
 
 	/**
