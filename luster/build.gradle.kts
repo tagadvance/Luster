@@ -14,6 +14,7 @@ dependencies {
     api("org.slf4j:slf4j-api:2.0.9")
 
     implementation("com.google.guava:guava:32.1.3-jre")
+    implementation("com.google.code.gson:gson:2.10.1")
 }
 
 java {

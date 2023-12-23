@@ -19,7 +19,7 @@ import java.util.stream.Stream;
  * depending on an annotation further up the stack, i.e. bottom-up. {@link StackAnnotations} helps
  * with the latter.
  */
-public class StackAnnotations {
+public class StackAnnotations implements Annotations {
 
 	private final Predicate<StackTraceElement> filter;
 

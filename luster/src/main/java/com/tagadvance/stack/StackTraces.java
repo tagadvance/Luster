@@ -33,6 +33,13 @@ public class StackTraces {
 		return e -> RegEx.compile(classNameRegex).matcher(e.getClassName()).find();
 	}
 
+	/**
+	 * @return {@literal true} if this code is being called from a JUnit test
+	 */
+	public static boolean isTesting() {
+		return asStream().anyMatch(retain("org.junit.*"));
+	}
+
 	private StackTraces() {
 	}
 
