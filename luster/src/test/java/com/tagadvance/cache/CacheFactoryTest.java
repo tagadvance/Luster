@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 
 class CacheFactoryTest {
@@ -104,6 +105,19 @@ class CacheFactoryTest {
 		});
 	}
 
+	@Test
+	void testMaxSize() {
+		final var controller = new CacheFactory().newCache(MaxSize.class,
+			(Function<Integer, Object>) integer -> new Object());
+
+		final MaxSize operation = controller.proxy();
+		operation.apply(1);
+		operation.apply(2);
+		operation.apply(3);
+
+		controller.getCache("MaxSize").map(Cache::size).ifPresent(size -> assertEquals(1, size));
+	}
+
 	public interface ExpensiveOperation {
 
 		Object expensiveOperation() throws FooException;
@@ -144,6 +158,14 @@ class CacheFactoryTest {
 
 		@CacheConfiguration(name = "RefreshAfterWrite", expireAfterWriteDelay = 100L, refreshAfterWriteDelay = 100L, recordStats = true)
 		Object expensiveOperation() throws FooException;
+
+	}
+
+	public interface MaxSize extends Function<Integer, Object> {
+
+		@CacheConfiguration(name = "MaxSize", expireAfterWriteDelay = 1_000_000L, maximumSize = 1, recordStats = true)
+		@Override
+		Object apply(Integer i);
 
 	}
 

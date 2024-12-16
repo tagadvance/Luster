@@ -8,6 +8,11 @@ public interface Cache {
 	String name();
 
 	/**
+	 * @return the size of the cache
+	 */
+	int size();
+
+	/**
 	 * Clear the cache.
 	 */
 	void clear();

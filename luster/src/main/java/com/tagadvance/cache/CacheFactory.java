@@ -10,6 +10,7 @@ import com.tagadvance.reflection.M;
 import com.tagadvance.reflection.ReflectionException;
 import com.tagadvance.utilities.Benchmark;
 import com.tagadvance.utilities.Once;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
@@ -40,7 +41,7 @@ public final class CacheFactory {
 		final var callback = new InterfaceCallback();
 		final var proxy = InvocationProxy.createProxy(instanceType, instance, callback);
 
-		return new CacheController<I>() {
+		return new CacheController<>() {
 			@Override
 			public I proxy() {
 				return proxy;
@@ -50,17 +51,13 @@ public final class CacheFactory {
 			public List<Cache> getCaches(final String name) {
 				requireNonNull(name, "name must not be null");
 
-				return callback.callbackByMethod.values()
-					.stream()
-					.filter(value -> {
-						if (value instanceof final Cache cache) {
-							return Objects.equals(name, cache.name());
-						}
+				return callback.callbackByMethod.values().stream().filter(value -> {
+					if (value instanceof final Cache cache) {
+						return Objects.equals(name, cache.name());
+					}
 
-						return false;
-					})
-					.map(value -> (Cache) value)
-					.toList();
+					return false;
+				}).map(value -> (Cache) value).toList();
 			}
 
 		};
@@ -80,8 +77,8 @@ public final class CacheFactory {
 			}
 
 			if (o instanceof final CacheKey key) {
-				return methodSignatureEquals(method, key.method)
-					&& Objects.deepEquals(args, key.args);
+				return methodSignatureEquals(method, key.method) && Objects.deepEquals(args,
+					key.args);
 			}
 
 			return false;
@@ -109,12 +106,11 @@ public final class CacheFactory {
 			final var method = invocation.method();
 
 			return callbackByMethod.computeIfAbsent(method, key -> M.getAnnotations(key)
-					.filter(a -> a instanceof CacheConfiguration)
-					.map(a -> (CacheConfiguration) a)
-					.findFirst()
-					.map(a -> (InvocationCallback) new CacheMethodCallback(a))
-					.orElseGet(supplier))
-				.onInvocation(invocation);
+				.filter(a -> a instanceof CacheConfiguration)
+				.map(a -> (CacheConfiguration) a)
+				.findFirst()
+				.map(a -> (InvocationCallback) new CacheMethodCallback(a))
+				.orElseGet(supplier)).onInvocation(invocation);
 		}
 
 	}
@@ -140,11 +136,11 @@ public final class CacheFactory {
 
 	}
 
-	private class CacheMethodCallback<I> implements Cache, InvocationCallback {
+	private class CacheMethodCallback implements Cache, InvocationCallback {
 
 		private final CacheConfiguration cacheConfiguration;
 
-		private final ConcurrentHashMap<CacheKey, Object> map;
+		private final ConcurrentHashMap<CacheKey, CacheEntry> map;
 
 		private final ConcurrentHashMap<CacheKey, ScheduledFuture<?>> afterAccessFutures;
 
@@ -155,6 +151,8 @@ public final class CacheFactory {
 		private final Supplier<CacheStatistics> statisticsSupplier = Once.supplier(
 			CacheStatistics::new);
 
+		private final EvictionStrategy evictionStrategy;
+
 		public CacheMethodCallback(final CacheConfiguration cacheConfiguration) {
 			this.cacheConfiguration = cacheConfiguration;
 			final var initialCapacity = cacheConfiguration.initialCapacity();
@@ -162,6 +160,17 @@ public final class CacheFactory {
 			this.afterAccessFutures = new ConcurrentHashMap<>(initialCapacity);
 			this.afterWriteFutures = new ConcurrentHashMap<>(initialCapacity);
 			this.refreshFutures = new ConcurrentHashMap<>(initialCapacity);
+			final var evictionStrategy = cacheConfiguration.evictionStrategy();
+			this.evictionStrategy = evictionStrategy(evictionStrategy);
+		}
+
+		private EvictionStrategy evictionStrategy(final Class<? extends EvictionStrategy> c) {
+			try {
+				return c.getDeclaredConstructor().newInstance();
+			} catch (final InvocationTargetException | InstantiationException |
+						   IllegalAccessException | NoSuchMethodException e) {
+				throw new ReflectionException(e);
+			}
 		}
 
 		@Override
@@ -170,16 +179,20 @@ public final class CacheFactory {
 		}
 
 		@Override
+		public int size() {
+			return map.size();
+		}
+
+		@Override
 		public void clear() {
 			map.keySet().removeIf(key -> {
-				Stream.of(afterAccessFutures, afterWriteFutures, refreshFutures)
-					.forEach(map -> {
-						final var future = map.get(key);
-						if (future != null) {
-							future.cancel(false);
-							map.remove(key);
-						}
-					});
+				Stream.of(afterAccessFutures, afterWriteFutures, refreshFutures).forEach(map -> {
+					final var future = map.get(key);
+					if (future != null) {
+						future.cancel(false);
+						map.remove(key);
+					}
+				});
 
 				return true;
 			});
@@ -209,7 +222,7 @@ public final class CacheFactory {
 					recordStats(CacheStatistics::miss);
 
 					final var instance = invocation.instance();
-					final Supplier<Object> supplier = createSupplier(method, args, instance);
+					final Supplier<CacheEntry> supplier = createSupplier(method, args, instance);
 					var value = supplier.get();
 
 					expireAfterWrite(key);
@@ -220,22 +233,30 @@ public final class CacheFactory {
 				});
 			} catch (final ReflectionException e) {
 				throw toValidException(e, method);
+			} finally {
+				runEviction();
 			}
 		}
 
-		private Supplier<Object> createSupplier(final Method method, final Object[] args,
+		private Supplier<CacheEntry> createSupplier(final Method method, final Object[] args,
 			final Object instance) {
 			final var instanceClass = instance.getClass();
 			final var matchingMethods = M.getMethods(instanceClass)
 				.filter(m -> methodSignatureEquals(m, method))
 				.toList();
-			final Supplier<Object> supplier = switch (matchingMethods.size()) {
+			final Supplier<CacheEntry> supplier = switch (matchingMethods.size()) {
 				case 0 -> throw new ReflectionException("no matching method found",
 					new IllegalArgumentException());
 				case 1 -> {
 					final var match = matchingMethods.get(0);
 
-					yield () -> M.invoke(instance, args).apply(match);
+					yield () -> {
+						match.setAccessible(true);
+
+						final var result = M.invoke(instance, args).apply(match);
+
+						return new CacheEntryRecord(result);
+					};
 				}
 				default -> throw new ReflectionException("ambiguous method",
 					new IllegalArgumentException());
@@ -276,11 +297,10 @@ public final class CacheFactory {
 				return;
 			}
 
-			afterWriteFutures.computeIfPresent(key,
-				(k, v) -> {
-					v.cancel(false);
-					return null;
-				});
+			afterWriteFutures.computeIfPresent(key, (k, v) -> {
+				v.cancel(false);
+				return null;
+			});
 
 			final var unit = cacheConfiguration.expireAfterWriteTimeUnit();
 			afterWriteFutures.compute(key,
@@ -292,7 +312,7 @@ public final class CacheFactory {
 			recordStats(CacheStatistics::eviction);
 		}
 
-		private void refresh(final CacheKey key, final Supplier<Object> supplier) {
+		private void refresh(final CacheKey key, final Supplier<CacheEntry> supplier) {
 			final var refreshDelay = cacheConfiguration.refreshAfterWriteDelay();
 			if (refreshDelay < 0) {
 				return;
@@ -303,28 +323,36 @@ public final class CacheFactory {
 				// TODO: log warning that this is in invalid configuration
 			}
 
-			refreshFutures.computeIfPresent(key,
-				(k, v) -> {
-					v.cancel(false);
-					return null;
-				});
+			refreshFutures.computeIfPresent(key, (k, v) -> {
+				v.cancel(false);
+				return null;
+			});
 
 			final var unit = cacheConfiguration.refreshAfterWriteTimeUnit();
 			refreshFutures.compute(key, (k, v) -> executor.schedule(() -> {
-					try {
-						final var value = supplier.get();
-						map.put(k, value);
-					} catch (final ReflectionException e) {
-						// FIXME: log refresh failure
-					}
-				},
-				refreshDelay, unit));
+				try {
+					final var value = supplier.get();
+					map.put(k, value);
+
+					runEviction();
+				} catch (final ReflectionException e) {
+					// FIXME: log refresh failure
+				}
+			}, refreshDelay, unit));
 		}
 
 		private void recordStats(final Consumer<CacheStatistics> consumer) {
 			if (cacheConfiguration.recordStats()) {
 				final var stats = statisticsSupplier.get();
 				consumer.accept(stats);
+			}
+		}
+
+		private void runEviction() {
+			final var limit = cacheConfiguration.maximumSize();
+			if (limit > -1) {
+				final var values = map.values();
+				evictionStrategy.evict(values, limit);
 			}
 		}
 
@@ -342,22 +370,35 @@ public final class CacheFactory {
 	private static Predicate<Throwable> exceptionMatchesMethodSignature(final Method method) {
 		final var exceptionTypes = method.getExceptionTypes();
 
-		return t -> t instanceof RuntimeException
-			|| Stream.of(exceptionTypes)
+		return t -> t instanceof RuntimeException || Stream.of(exceptionTypes)
 			.anyMatch(et -> et.isInstance(t));
 	}
 
 	private static int methodHashCode(final Method method) {
-		return Objects.hash(method.getReturnType(),
-			Arrays.hashCode(method.getParameterTypes()));
+		return Objects.hash(method.getReturnType(), Arrays.hashCode(method.getParameterTypes()));
 	}
 
-	private static boolean methodSignatureEquals(final Method method,
-		final Method otherMethod) {
+	private static boolean methodSignatureEquals(final Method method, final Method otherMethod) {
 		// TODO: research method.getAnnotatedReturnType() and method.getGenericReturnType()
-		return Objects.equals(method.getName(), otherMethod.getName())
-			&& Objects.equals(method.getReturnType(), otherMethod.getReturnType())
-			&& Arrays.equals(method.getParameterTypes(), otherMethod.getParameterTypes());
+		return Objects.equals(method.getName(), otherMethod.getName()) && Objects.equals(
+			method.getReturnType(), otherMethod.getReturnType()) && methodSignatureMatches(method,
+			otherMethod);
+	}
+
+	private static boolean methodSignatureMatches(final Method method, final Method otherMethod) {
+		if (method.getParameterCount() != otherMethod.getParameterCount()) {
+			return false;
+		}
+
+		final var parameterTypes1 = method.getParameterTypes();
+		final var parameterTypes2 = otherMethod.getParameterTypes();
+		for (int i = 0; i < parameterTypes1.length; i++) {
+			if (!parameterTypes1[i].isAssignableFrom(parameterTypes2[i])) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 }

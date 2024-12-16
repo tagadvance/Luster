@@ -57,7 +57,14 @@ public @interface CacheConfiguration {
 	/**
 	 * See Also: {@link CacheBuilder#maximumSize(long)}
 	 */
-	long maximumSize() default -1L;
+	int maximumSize() default -1;
+
+	/**
+	 * The name of a class that implements {@link EvictionStrategy}.
+	 *
+	 * @return the name of the method to use to calculate the expiration from the result
+	 */
+	Class<? extends EvictionStrategy> evictionStrategy() default OldestFirstEvictionStrategy.class;
 
 	/**
 	 * See Also: {@link CacheBuilder#maximumWeight(long)}
