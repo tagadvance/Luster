@@ -2,6 +2,7 @@ package com.tagadvance.proxy;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Optional;
 
 /**
  * Represents a {@link Method#invoke(Object, Object...) method invocation}.
@@ -12,6 +13,14 @@ import java.lang.reflect.Method;
  * @param args     the arguments supplied to the method
  */
 public record Invocation(Object proxy, Method method, Object instance, Object... args) {
+
+	public Invocation(final Object proxy, final Method method, final Object instance,
+		final Object... args) {
+		this.proxy = proxy;
+		this.method = method;
+		this.instance = instance;
+		this.args = Optional.ofNullable(args).orElse(new Object[]{});
+	}
 
 	/**
 	 * This is essentially the same as calling <code>instance.method(args);</code>

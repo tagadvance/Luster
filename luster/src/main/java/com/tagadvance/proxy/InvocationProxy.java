@@ -13,10 +13,11 @@ public class InvocationProxy {
 	 * @param iface              an interface
 	 * @param instance           an instance of {@literal iface}
 	 * @param invocationCallback an {@link InvocationCallback}
+	 * @param <T>                the instance type
 	 * @param <I>                the interface type
 	 * @return a proxy
 	 */
-	public static <I> I createProxy(final Class<I> iface, final I instance,
+	public static <T, I extends T> I createProxy(final Class<I> iface, final T instance,
 		final InvocationCallback invocationCallback) {
 		requireNonNull(iface, "iface must not be null");
 		requireNonNull(instance, "instance must not be null");

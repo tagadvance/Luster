@@ -9,7 +9,8 @@ repositories {
 }
 
 dependencies {
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.1")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.+")
+    testImplementation("org.mockito:mockito-core:3.+")
 
     api("org.slf4j:slf4j-api:2.0.9")
 
