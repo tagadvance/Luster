@@ -64,12 +64,7 @@ public @interface CacheConfiguration {
 	 *
 	 * @return the name of the method to use to calculate the expiration from the result
 	 */
-	Class<? extends EvictionStrategy> evictionStrategy() default OldestFirstEvictionStrategy.class;
-
-	/**
-	 * See Also: {@link CacheBuilder#maximumWeight(long)}
-	 */
-	long maximumWeight() default -1L;
+	Class<? extends EvictionStrategy> evictionStrategy() default DefaultEvictionStrategy.class;
 
 	/**
 	 * See Also: {@link CacheBuilder#refreshAfterWrite(long, TimeUnit)}
@@ -90,8 +85,5 @@ public @interface CacheConfiguration {
 	 * See Also: {@link CacheBuilder#softValues()}
 	 */
 	boolean softValues() default false;
-
-	// FIXME:
-	String weigher() default "";
 
 }

@@ -118,6 +118,18 @@ class CacheFactoryTest {
 		controller.getCache("MaxSize").map(Cache::size).ifPresent(size -> assertEquals(1, size));
 	}
 
+	@Test
+	void testSoftValues() throws FooException, InterruptedException {
+		final var controller = new CacheFactory().newCache(SoftValues.class,
+			new ExpensiveOperationSuccess());
+
+		final ExpensiveOperation operation = controller.proxy();
+		final var o1 = operation.expensiveOperation();
+		assertNotNull(o1);
+		final var o2 = operation.expensiveOperation();
+		assertSame(o1, o2);
+	}
+
 	public interface ExpensiveOperation {
 
 		Object expensiveOperation() throws FooException;
@@ -166,6 +178,13 @@ class CacheFactoryTest {
 		@CacheConfiguration(name = "MaxSize", expireAfterWriteDelay = 1_000_000L, maximumSize = 1, recordStats = true)
 		@Override
 		Object apply(Integer i);
+
+	}
+
+	public interface SoftValues extends ExpensiveOperation {
+
+		@CacheConfiguration(name = "SoftValues", expireAfterAccessDelay = 100L, softValues = true)
+		Object expensiveOperation() throws FooException;
 
 	}
 

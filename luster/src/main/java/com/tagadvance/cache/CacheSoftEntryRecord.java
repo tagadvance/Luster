@@ -1,20 +1,21 @@
 package com.tagadvance.cache;
 
+import java.lang.ref.SoftReference;
 import java.time.Instant;
 import java.util.Optional;
 
-class CacheEntryRecord implements CacheEntry {
+class CacheSoftEntryRecord implements CacheEntry {
 
 	private final Instant creationTime;
-	private final Object value;
+	private final SoftReference<Object> value;
 
-	CacheEntryRecord(final Object value) {
+	CacheSoftEntryRecord(final Object value) {
 		this(null, value);
 	}
 
-	public CacheEntryRecord(final Instant creationTime, final Object value) {
+	CacheSoftEntryRecord(final Instant creationTime, final Object value) {
 		this.creationTime = Optional.ofNullable(creationTime).orElseGet(Instant::now);
-		this.value = value;
+		this.value = new SoftReference<>(value);
 	}
 
 	@Override
@@ -24,7 +25,7 @@ class CacheEntryRecord implements CacheEntry {
 
 	@Override
 	public Object value() {
-		return value;
+		return value.get();
 	}
 
 }

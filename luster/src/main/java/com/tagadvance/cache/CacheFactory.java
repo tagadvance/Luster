@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -148,6 +149,8 @@ public final class CacheFactory {
 
 		private final ConcurrentHashMap<CacheKey, ScheduledFuture<?>> refreshFutures;
 
+		private final CacheEntryFactory factory;
+
 		private final Supplier<CacheStatistics> statisticsSupplier = Once.supplier(
 			CacheStatistics::new);
 
@@ -160,6 +163,9 @@ public final class CacheFactory {
 			this.afterAccessFutures = new ConcurrentHashMap<>(initialCapacity);
 			this.afterWriteFutures = new ConcurrentHashMap<>(initialCapacity);
 			this.refreshFutures = new ConcurrentHashMap<>(initialCapacity);
+			this.factory = value -> cacheConfiguration.softValues()
+				? new CacheSoftEntryRecord(value)
+				: new CacheEntryRecord(value);
 			final var evictionStrategy = cacheConfiguration.evictionStrategy();
 			this.evictionStrategy = evictionStrategy(evictionStrategy);
 		}
@@ -212,25 +218,38 @@ public final class CacheFactory {
 			expireAfterAccess(cacheKey);
 
 			try {
-				return map.compute(cacheKey, (key, currentValue) -> {
+				// force a hard ref just in case GC runs
+				final AtomicReference<Object> ref = new AtomicReference<>();
+				map.compute(cacheKey, (key, currentValue) -> {
 					if (currentValue != null) {
-						recordStats(CacheStatistics::hit);
+						final var value = currentValue.value();
+						if (value != null) {
+							ref.set(value);
 
-						return currentValue;
+							recordStats(CacheStatistics::hit);
+
+							return currentValue;
+						}
 					}
 
 					recordStats(CacheStatistics::miss);
 
 					final var instance = invocation.instance();
-					final Supplier<CacheEntry> supplier = createSupplier(method, args, instance);
+					final Supplier<Object> supplier = createSupplier(method, args, instance);
 					var value = supplier.get();
 
-					expireAfterWrite(key);
+					try {
+						return factory.newCacheEntry(value);
+					} finally {
+						ref.set(value);
 
-					refresh(key, supplier);
+						expireAfterWrite(key);
 
-					return value;
+						refresh(key, supplier);
+					}
 				});
+
+				return ref.get();
 			} catch (final ReflectionException e) {
 				throw toValidException(e, method);
 			} finally {
@@ -238,13 +257,13 @@ public final class CacheFactory {
 			}
 		}
 
-		private Supplier<CacheEntry> createSupplier(final Method method, final Object[] args,
+		private Supplier<Object> createSupplier(final Method method, final Object[] args,
 			final Object instance) {
 			final var instanceClass = instance.getClass();
 			final var matchingMethods = M.getMethods(instanceClass)
 				.filter(m -> methodSignatureEquals(m, method))
 				.toList();
-			final Supplier<CacheEntry> supplier = switch (matchingMethods.size()) {
+			final Supplier<Object> supplier = switch (matchingMethods.size()) {
 				case 0 -> throw new ReflectionException("no matching method found",
 					new IllegalArgumentException());
 				case 1 -> {
@@ -253,9 +272,7 @@ public final class CacheFactory {
 					yield () -> {
 						match.setAccessible(true);
 
-						final var result = M.invoke(instance, args).apply(match);
-
-						return new CacheEntryRecord(result);
+						return M.invoke(instance, args).apply(match);
 					};
 				}
 				default -> throw new ReflectionException("ambiguous method",
@@ -312,7 +329,7 @@ public final class CacheFactory {
 			recordStats(CacheStatistics::eviction);
 		}
 
-		private void refresh(final CacheKey key, final Supplier<CacheEntry> supplier) {
+		private void refresh(final CacheKey key, final Supplier<Object> supplier) {
 			final var refreshDelay = cacheConfiguration.refreshAfterWriteDelay();
 			if (refreshDelay < 0) {
 				return;
@@ -332,7 +349,8 @@ public final class CacheFactory {
 			refreshFutures.compute(key, (k, v) -> executor.schedule(() -> {
 				try {
 					final var value = supplier.get();
-					map.put(k, value);
+					final var record = factory.newCacheEntry(value);
+					map.put(k, record);
 
 					runEviction();
 				} catch (final ReflectionException e) {
@@ -400,5 +418,13 @@ public final class CacheFactory {
 
 		return true;
 	}
+
+	@FunctionalInterface
+	private interface CacheEntryFactory {
+
+		CacheEntry newCacheEntry(final Object value);
+
+	}
+
 
 }
