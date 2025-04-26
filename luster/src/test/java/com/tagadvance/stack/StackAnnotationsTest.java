@@ -2,8 +2,10 @@ package com.tagadvance.stack;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.lang.annotation.Documented;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.stream.Collectors;
-import javax.annotation.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -50,6 +52,12 @@ class StackAnnotationsTest {
 		public void foo(final Object o) {
 			super.foo(o);
 		}
+
+	}
+
+	@Documented
+	@Retention(RetentionPolicy.RUNTIME)
+	public @interface Nullable {
 
 	}
 

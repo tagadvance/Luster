@@ -17,6 +17,7 @@ public class InvocationProxy {
 	 * @param <I>                the interface type
 	 * @return a proxy
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T, I extends T> I createProxy(final Class<I> iface, final T instance,
 		final InvocationCallback invocationCallback) {
 		requireNonNull(iface, "iface must not be null");

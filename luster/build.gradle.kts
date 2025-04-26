@@ -1,7 +1,7 @@
 plugins {
     `java-library`
     `maven-publish`
-    `signing`
+    signing
 }
 
 repositories {
@@ -10,12 +10,13 @@ repositories {
 
 dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.+")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.mockito:mockito-core:3.+")
 
-    api("org.slf4j:slf4j-api:2.0.9")
+    api("org.slf4j:slf4j-api:2.0.17")
 
-    implementation("com.google.guava:guava:32.1.3-jre")
-    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("com.google.guava:guava:33.4.8-jre")
+    implementation("com.google.code.gson:gson:2.13.1")
 }
 
 java {
