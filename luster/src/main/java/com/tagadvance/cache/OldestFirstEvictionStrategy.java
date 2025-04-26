@@ -1,6 +1,7 @@
 package com.tagadvance.cache;
 
 import java.util.Collection;
+import java.util.Comparator;
 
 public final class OldestFirstEvictionStrategy implements EvictionStrategy {
 
@@ -10,14 +11,13 @@ public final class OldestFirstEvictionStrategy implements EvictionStrategy {
 			return;
 		}
 
-		final var cutoff = entries
+		entries
 			.stream()
+			.sorted(Comparator.comparing(CacheEntry::creationTime).reversed())
 			.map(CacheEntry::creationTime)
-			.sorted()
-			.toList()
-			.get(limit - 1);
-
-		entries.removeIf(entry -> cutoff.isBefore(entry.creationTime()));
+			.skip(limit - 1)
+			.findFirst()
+			.ifPresent(cutoff -> entries.removeIf(entry -> cutoff.isAfter(entry.creationTime())));
 	}
 
 }
