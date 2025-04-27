@@ -9,20 +9,20 @@ Maven
 <dependency>
   <groupId>com.tagadvance</groupId>
   <artifactId>luster</artifactId>
-  <version>1.0.0</version>
+  <version>2.0.0</version>
 </dependency>
 ```
 
 Gradle
 
 ```groovy
-implementation group: 'com.tagadvance', name: 'luster', version: '1.0.0'
+implementation group: 'com.tagadvance', name: 'luster', version: '2.0.0'
 ```
 
 Gradle Kotlin
 
 ```kotlin
-implementation("com.tagadvance:luster:1.0.0")
+implementation("com.tagadvance:luster:2.0.0")
 ```
 
 ## Examples
