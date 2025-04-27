@@ -1,10 +1,11 @@
 package com.tagadvance.utilities;
 
+import com.google.common.base.Throwables;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.tagadvance.exception.UncheckedExecutionException;
 import java.util.Objects;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,11 +38,7 @@ public class Patterns {
 	 * @see Pattern#compile(String)
 	 */
 	public static Pattern compile(final String regex) {
-		try {
-			return patternCache.get(new PatternCacheKey(regex, 0));
-		} catch (final ExecutionException e) {
-			throw new RuntimeException(e);
-		}
+		return compile(regex, 0);
 	}
 
 	/**
@@ -56,9 +53,13 @@ public class Patterns {
 	 */
 	public static Pattern compile(final String regex, final int flags) {
 		try {
-			return patternCache.get(new PatternCacheKey(regex, flags));
-		} catch (final ExecutionException e) {
-			throw new RuntimeException(e);
+			final var key = new PatternCacheKey(regex, flags);
+
+			return patternCache.getUnchecked(key);
+		} catch (final UncheckedExecutionException e) {
+			Throwables.throwIfUnchecked(e.getCause());
+
+			throw e;
 		}
 	}
 

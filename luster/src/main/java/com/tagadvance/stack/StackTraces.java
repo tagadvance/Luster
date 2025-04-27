@@ -2,6 +2,7 @@ package com.tagadvance.stack;
 
 import com.tagadvance.utilities.Patterns;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
@@ -30,7 +31,42 @@ public class StackTraces {
 	 * {@link StackTraceElement#getClassName() class name} is found in the supplied input
 	 */
 	public static Predicate<StackTraceElement> retain(final String classNameRegex) {
-		return e -> Patterns.compile(classNameRegex).matcher(e.getClassName()).find();
+		final var pattern = Patterns.compile(classNameRegex);
+
+		return retain(pattern);
+	}
+
+	/**
+	 * @param pattern a {@link Pattern pattern}
+	 * @return a {@link Predicate filter} that retains
+	 * {@link StackTraceElement stack trace elements} where the
+	 * {@link StackTraceElement#getClassName() class name} is found in the supplied input
+	 */
+	public static Predicate<StackTraceElement> retain(final Pattern pattern) {
+		return e -> pattern.matcher(e.getClassName()).find();
+	}
+
+	/**
+	 * Recursively prunes the {@link Throwable#getStackTrace() stack trace} to remove
+	 * {@link StackTraceElement elements} that do not patch the supplied {@link Pattern pattern}.
+	 *
+	 * @param throwable a {@link Throwable throwable}
+	 * @param pattern   a {@link Pattern pattern} {@link StackTraceElement stack trace elements}
+	 *                  where the {@link StackTraceElement#getClassName() class name} is found in
+	 *                  the supplied input
+	 */
+	// TODO: unit test
+	public static void retain(final Throwable throwable, final Pattern pattern) {
+		var stackTrace = throwable.getStackTrace();
+		final var prunedStackTrace = Stream.of(stackTrace)
+			.filter(retain(pattern))
+			.toArray(StackTraceElement[]::new);
+		throwable.setStackTrace(prunedStackTrace);
+
+		final var cause = throwable.getCause();
+		if (cause != null) {
+			retain(cause, pattern);
+		}
 	}
 
 	/**
