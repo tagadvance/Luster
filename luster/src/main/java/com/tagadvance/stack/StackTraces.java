@@ -1,6 +1,6 @@
 package com.tagadvance.stack;
 
-import com.tagadvance.regex.RegEx;
+import com.tagadvance.utilities.Patterns;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -30,7 +30,7 @@ public class StackTraces {
 	 * {@link StackTraceElement#getClassName() class name} is found in the supplied input
 	 */
 	public static Predicate<StackTraceElement> retain(final String classNameRegex) {
-		return e -> RegEx.compile(classNameRegex).matcher(e.getClassName()).find();
+		return e -> Patterns.compile(classNameRegex).matcher(e.getClassName()).find();
 	}
 
 	/**

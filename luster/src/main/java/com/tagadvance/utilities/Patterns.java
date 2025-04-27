@@ -1,4 +1,4 @@
-package com.tagadvance.regex;
+package com.tagadvance.utilities;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -10,14 +10,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * {@link RegEx} caches {@link Pattern patterns} to improve performance.
+ * {@link Patterns} caches {@link Pattern patterns} to improve performance.
  * <p>
  * If performance is critical, additional performance may be obtained by re-using a
  * {@link Matcher matcher} via {@link Matcher#reset(CharSequence)} on a per-thread basis.
  *
  * @see <a href="https://stackoverflow.com/a/19829983/625688">Answer by Seelenvirtuose</a>
  */
-public class RegEx {
+public class Patterns {
 
 	private static final LoadingCache<PatternCacheKey, Pattern> patternCache = CacheBuilder.newBuilder()
 		.expireAfterAccess(1, TimeUnit.MINUTES)
@@ -62,7 +62,7 @@ public class RegEx {
 		}
 	}
 
-	private RegEx() {
+	private Patterns() {
 	}
 
 	private record PatternCacheKey(String regex, int flags) {
