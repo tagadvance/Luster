@@ -4,16 +4,16 @@ import java.lang.ref.SoftReference;
 import java.time.Instant;
 import java.util.Optional;
 
-class CacheSoftEntryRecord implements CacheEntry {
+class SoftCacheEntry implements CacheEntry {
 
 	private final Instant creationTime;
 	private final SoftReference<Object> value;
 
-	CacheSoftEntryRecord(final Object value) {
+	SoftCacheEntry(final Object value) {
 		this(null, value);
 	}
 
-	CacheSoftEntryRecord(final Instant creationTime, final Object value) {
+	SoftCacheEntry(final Instant creationTime, final Object value) {
 		this.creationTime = Optional.ofNullable(creationTime).orElseGet(Instant::now);
 		this.value = new SoftReference<>(value);
 	}

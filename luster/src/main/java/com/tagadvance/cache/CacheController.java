@@ -18,7 +18,7 @@ public interface CacheController<I> {
 	 * @return an {@link Optional optional} {@link Cache cache}
 	 */
 	default Optional<Cache> getCache(String name) {
-		return getCaches(name).stream().findFirst();
+		return getCaches(name).stream().findAny();
 	}
 
 	/**

@@ -14,7 +14,7 @@ class ScheduleTest {
 
 	/**
 	 * Test my assumption that a long delay scheduled first would block subsequent shorter delays.
-	 * Thankfully that doesn't appear to be the case.
+	 * Thankfully, that doesn't appear to be the case.
 	 */
 	@Test
 	void testThatScheduledTasksDoNotBlock() {
@@ -32,7 +32,7 @@ class ScheduleTest {
 				() -> assertEquals(1, count.incrementAndGet()), 100,
 				TimeUnit.MILLISECONDS);
 
-			Stream.of(future1, future2, future3).forEach(future -> {
+			Stream.of(future3, future2, future1).forEach(future -> {
 				try {
 					future.get();
 				} catch (final InterruptedException | ExecutionException e) {

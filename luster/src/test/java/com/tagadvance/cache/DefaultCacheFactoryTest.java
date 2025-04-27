@@ -10,20 +10,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 
-class CacheFactoryTest {
+/**
+ * Unit tests for {@link DefaultCacheFactory}.
+ */
+class DefaultCacheFactoryTest {
 
 	@Test
 	void testException() {
-		assertThrows(FooException.class, () -> new CacheFactory().newCache(ExpireAfterAccess.class,
-			new ExpensiveOperationFailure()).proxy().expensiveOperation());
+		assertThrows(FooException.class,
+			() -> new DefaultCacheFactory().newCache(ExpireAfterAccess.class,
+				new ExpensiveOperationFailure()).proxy().expensiveOperation());
 
-		assertThrows(FooException.class, () -> new CacheFactory().newCache(ExpireAfterWrite.class,
-			new ExpensiveOperationFailure()).proxy().expensiveOperation());
+		assertThrows(FooException.class,
+			() -> new DefaultCacheFactory().newCache(ExpireAfterWrite.class,
+				new ExpensiveOperationFailure()).proxy().expensiveOperation());
 	}
 
 	@Test
 	void testExpireAfterAccess() throws FooException, InterruptedException {
-		final var controller = new CacheFactory().newCache(ExpireAfterAccess.class,
+		final var controller = new DefaultCacheFactory().newCache(ExpireAfterAccess.class,
 			new ExpensiveOperationSuccess());
 
 		final ExpensiveOperation operation = controller.proxy();
@@ -51,7 +56,7 @@ class CacheFactoryTest {
 
 	@Test
 	void testExpireAfterWrite() throws FooException, InterruptedException {
-		final var controller = new CacheFactory().newCache(ExpireAfterWrite.class,
+		final var controller = new DefaultCacheFactory().newCache(ExpireAfterWrite.class,
 			new ExpensiveOperationSuccess());
 
 		final ExpensiveOperation operation = controller.proxy();
@@ -79,7 +84,7 @@ class CacheFactoryTest {
 
 	@Test
 	void testRefreshAfterWrite() throws FooException, InterruptedException {
-		final var controller = new CacheFactory().newCache(RefreshAfterWrite.class,
+		final var controller = new DefaultCacheFactory().newCache(RefreshAfterWrite.class,
 			new ExpensiveOperationSuccess());
 
 		final ExpensiveOperation operation = controller.proxy();
@@ -107,7 +112,7 @@ class CacheFactoryTest {
 
 	@Test
 	void testMaxSize() {
-		final var controller = new CacheFactory().newCache(MaxSize.class,
+		final var controller = new DefaultCacheFactory().newCache(MaxSize.class,
 			(Function<Integer, Object>) integer -> new Object());
 
 		final MaxSize operation = controller.proxy();
@@ -119,8 +124,8 @@ class CacheFactoryTest {
 	}
 
 	@Test
-	void testSoftValues() throws FooException, InterruptedException {
-		final var controller = new CacheFactory().newCache(SoftValues.class,
+	void testSoftValues() throws FooException {
+		final var controller = new DefaultCacheFactory().newCache(SoftValues.class,
 			new ExpensiveOperationSuccess());
 
 		final ExpensiveOperation operation = controller.proxy();
@@ -136,15 +141,15 @@ class CacheFactoryTest {
 
 	}
 
-	public class ExpensiveOperationSuccess implements ExpensiveOperation {
+	public static class ExpensiveOperationSuccess implements ExpensiveOperation {
 
-		public Object expensiveOperation() throws FooException {
+		public Object expensiveOperation() {
 			return new Object();
 		}
 
 	}
 
-	public class ExpensiveOperationFailure implements ExpensiveOperation {
+	public static class ExpensiveOperationFailure implements ExpensiveOperation {
 
 		public Object expensiveOperation() throws FooException {
 			throw new FooException();
@@ -175,7 +180,7 @@ class CacheFactoryTest {
 
 	public interface MaxSize extends Function<Integer, Object> {
 
-		@CacheConfiguration(name = "MaxSize", expireAfterWriteDelay = 1_000_000L, maximumSize = 1, recordStats = true)
+		@CacheConfiguration(name = "MaxSize", expireAfterWriteDelay = Long.MAX_VALUE, maximumSize = 1, recordStats = true)
 		@Override
 		Object apply(Integer i);
 
@@ -188,7 +193,7 @@ class CacheFactoryTest {
 
 	}
 
-	public class FooException extends Exception {
+	public static class FooException extends Exception {
 
 	}
 

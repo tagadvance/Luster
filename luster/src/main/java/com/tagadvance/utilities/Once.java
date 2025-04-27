@@ -3,6 +3,7 @@ package com.tagadvance.utilities;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 /**
@@ -11,44 +12,66 @@ import java.util.function.Supplier;
 public final class Once {
 
 	public static <T> Supplier<T> supplier(final Supplier<T> supplier) {
-		final var ref = new AtomicReference<T>();
+		final var atomicValue = new AtomicReference<T>();
+		final var lock = new ReentrantLock();
 
 		return () -> {
-			var result = ref.get();
-			if (result == null) {
-				result = supplier.get();
-				if (!ref.compareAndSet(null, result)) {
-					return ref.get();
-				}
+			final var value = atomicValue.get();
+			if (value != null) {
+				return value;
 			}
 
-			return result;
+			lock.lock();
+			try {
+				final var newValue = supplier.get();
+				atomicValue.set(newValue);
+
+				return newValue;
+			} finally {
+				lock.unlock();
+			}
 		};
 	}
 
 	public static Runnable runnable(final Runnable runnable) {
-		final var isInit = new AtomicBoolean();
+		final var isFirstRun = new AtomicBoolean();
 
 		return () -> {
-			if (isInit.compareAndSet(false, true)) {
+			if (isFirstRun.compareAndSet(false, true)) {
 				runnable.run();
 			}
 		};
 	}
 
 	public static <V> Callable<V> callable(final Callable<V> callable) {
-		final var ref = new AtomicReference<V>();
+		final var atomicValue = new AtomicReference<V>();
+		final var atomicException = new AtomicReference<Exception>();
+		final var lock = new ReentrantLock();
 
 		return () -> {
-			var result = ref.get();
-			if (result == null) {
-				result = callable.call();
-				if (!ref.compareAndSet(null, result)) {
-					return ref.get();
-				}
+			final var value = atomicValue.get();
+			if (value != null) {
+				return value;
 			}
 
-			return result;
+			final var exception = atomicException.get();
+			if (exception != null) {
+				throw exception;
+			}
+
+			lock.lock();
+			try {
+				final var callValue = callable.call();
+				atomicValue.set(callValue);
+
+				return callValue;
+			} catch (final Exception e) {
+				atomicException.set(e);
+
+				throw e;
+			} finally {
+				lock.unlock();
+			}
 		};
 	}
 

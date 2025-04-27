@@ -16,12 +16,14 @@ import java.util.concurrent.TimeUnit;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface CacheConfiguration {
 
+	long DISABLED = -1L;
+
 	String name();
 
 	/**
 	 * See Also: {@link CacheBuilder#expireAfterAccess(long, TimeUnit)}
 	 */
-	long expireAfterAccessDelay() default -1L;
+	long expireAfterAccessDelay() default DISABLED;
 
 	/**
 	 * See Also: {@link CacheBuilder#expireAfterAccess(long, TimeUnit)}
@@ -31,23 +33,23 @@ public @interface CacheConfiguration {
 	/**
 	 * See Also: {@link CacheBuilder#expireAfterWrite(long, TimeUnit)}
 	 */
-	long expireAfterWriteDelay() default -1L;
+	long expireAfterWriteDelay() default DISABLED;
 
 	/**
 	 * See Also: {@link CacheBuilder#expireAfterWrite(long, TimeUnit)}
 	 */
 	TimeUnit expireAfterWriteTimeUnit() default TimeUnit.MILLISECONDS;
 
-	/**
-	 * The name of the method to use to calculate the expiration from the result. Must accept one
-	 * argument and return a {@link java.time.Duration} or {@link Long millis}.
-	 * <p>
-	 * .e.g. <code>"com.domain.Class#methodName"</code> or simply <code>"methodName"</code> if it
-	 * belongs to the same interface.
-	 *
-	 * @return the name of the method to use to calculate the expiration from the result
-	 */
-	String expireAfterWriteHook() default "";
+//	/**
+//	 * The name of the method to use to calculate the expiration from the result. Must accept one
+//	 * argument and return a {@link java.time.Duration} or {@link Long millis}.
+//	 * <p>
+//	 * .e.g. <code>"com.domain.Class#methodName"</code> or simply <code>"methodName"</code> if it
+//	 * belongs to the same interface.
+//	 *
+//	 * @return the name of the method to use to calculate the expiration from the result
+//	 */
+//	String expireAfterWriteHook() default "";
 
 	/**
 	 * See Also: {@link CacheBuilder#initialCapacity(int)}
@@ -57,7 +59,7 @@ public @interface CacheConfiguration {
 	/**
 	 * See Also: {@link CacheBuilder#maximumSize(long)}
 	 */
-	int maximumSize() default -1;
+	int maximumSize() default Integer.MAX_VALUE;
 
 	/**
 	 * The name of a class that implements {@link EvictionStrategy}.
@@ -74,7 +76,7 @@ public @interface CacheConfiguration {
 	/**
 	 * See Also: {@link CacheBuilder#refreshAfterWrite(long, TimeUnit)}
 	 */
-	long refreshAfterWriteDelay() default -1L;
+	long refreshAfterWriteDelay() default DISABLED;
 
 	/**
 	 * See Also: {@link CacheBuilder#refreshAfterWrite(long, TimeUnit)}
