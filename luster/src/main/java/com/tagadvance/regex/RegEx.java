@@ -3,6 +3,7 @@ package com.tagadvance.regex;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -65,6 +66,17 @@ public class RegEx {
 	}
 
 	private record PatternCacheKey(String regex, int flags) {
+
+		@Override
+		public boolean equals(final Object o) {
+			return o instanceof final PatternCacheKey that && flags == that.flags && Objects.equals(
+				regex, that.regex);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(regex, flags);
+		}
 
 	}
 

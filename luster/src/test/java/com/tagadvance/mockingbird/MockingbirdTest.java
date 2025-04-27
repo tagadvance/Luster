@@ -2,18 +2,15 @@ package com.tagadvance.mockingbird;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.tagadvance.stack.StackAnnotations;
-import com.tagadvance.stack.StackTraces;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 public class MockingbirdTest {
 
 	@Test
-	@Mimic(path = "src/test/resources")
 	void testMimic() {
-		final var annotations = new StackAnnotations(StackTraces.retain("com.tagadvance.*"));
-		final var mockingbird = new Mockingbird(annotations);
-		final var proxy = mockingbird.createProxy(Api.class, new ApiImpl());
+		final var mockingbird = new Mockingbird(Path.of("src/test/resources"));
+		final Api proxy = mockingbird.createProxy(Api.class, new ApiImpl());
 
 		final var result1 = proxy.call1();
 		assertEquals("Lorem ipsum dolor sit amet,", result1);
@@ -24,17 +21,19 @@ public class MockingbirdTest {
 
 	private interface Api {
 
+		boolean IS_RECORDING = false;
+
 		default String call1() {
-			return "Lorem ipsum dolor sit amet,";
+			return IS_RECORDING ? "Lorem ipsum dolor sit amet," : "...";
 		}
 
 		default String call2() {
-			return "consectetur adipiscing elit,";
+			return IS_RECORDING ? "consectetur adipiscing elit," : "...";
 		}
 
 	}
 
-	private class ApiImpl implements Api {
+	private static class ApiImpl implements Api {
 
 	}
 

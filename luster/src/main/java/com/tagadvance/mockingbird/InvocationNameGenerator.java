@@ -10,9 +10,10 @@ import com.tagadvance.proxy.Invocation;
 public interface InvocationNameGenerator {
 
 	/**
+	 * @param iface      the interface type
 	 * @param invocation an {@link Invocation invocation}
 	 * @return a {@link String name} for the supplied {@link Invocation invocation}
 	 */
-	String toName(final Invocation invocation);
+	String toName(final Class<?> iface, final Invocation invocation);
 
 }

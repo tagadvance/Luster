@@ -3,11 +3,9 @@ package com.tagadvance.mockingbird;
 import static java.util.Objects.requireNonNull;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.tagadvance.proxy.Invocation;
 import com.tagadvance.proxy.InvocationProxy;
-import com.tagadvance.reflection.M;
-import com.tagadvance.stack.Annotations;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,23 +19,23 @@ public class Mockingbird {
 
 	private static final Logger logger = LoggerFactory.getLogger(Mockingbird.class);
 
-	private final Annotations annotations;
+	private final Path path;
 	private final InvocationNameGenerator generator;
 	private final Gson gson;
 
-	public Mockingbird(final Annotations annotations) {
-		this(annotations, new CountingInvocationNameGenerator());
+	public Mockingbird(final Path path) {
+		this(path, null, null);
 	}
 
-	public Mockingbird(final Annotations annotations, final InvocationNameGenerator generator) {
-		this(annotations, generator, new Gson());
+	public Mockingbird(final Path path, final InvocationNameGenerator generator) {
+		this(path, generator, null);
 	}
 
-	public Mockingbird(final Annotations annotations, final InvocationNameGenerator generator,
-		final Gson gson) {
-		this.annotations = requireNonNull(annotations, "annotations must not be null");
-		this.generator = requireNonNull(generator, "generator must not be null");
-		this.gson = requireNonNull(gson, "gson must not be null");
+	public Mockingbird(final Path path, final InvocationNameGenerator generator, final Gson gson) {
+		this.path = requireNonNull(path, "path must not be null");
+		this.generator = Optional.ofNullable(generator)
+			.orElseGet(CountingInvocationNameGenerator::new);
+		this.gson = Optional.ofNullable(gson).orElseGet(() -> new GsonBuilder().create());
 	}
 
 	/**
@@ -47,10 +45,12 @@ public class Mockingbird {
 	 * @return a proxy
 	 */
 	public <I> I createProxy(final Class<I> iface, final I instance) {
-		return (I) InvocationProxy.createProxy(iface, instance, this::onInvocation);
+		return InvocationProxy.createProxy(iface, instance,
+			invocation -> onInvocation(iface, invocation));
 	}
 
-	private Object onInvocation(final Invocation invocation) throws Throwable {
+	private <I> Object onInvocation(final Class<I> iface, final Invocation invocation)
+		throws Throwable {
 		if (logger.isTraceEnabled()) {
 			logger.trace("onInvocation {}#{}({})", invocation.instance().getClass().getSimpleName(),
 				invocation.method().getName(), Stream.of(invocation.args())
@@ -58,15 +58,13 @@ public class Mockingbird {
 					.collect(Collectors.joining(", ")));
 		}
 
-		final var mimic = mimic();
-		if (mimic.isEmpty() || isObjectMethod(invocation)) {
-			logger.debug("deferring to invocation");
+		if (isObjectMethod(invocation)) {
+			logger.debug("Deferring to invocation");
 
 			return invocation.invoke();
 		}
 
-		final var path = mimic.get();
-		final var mimicName = generator.toName(invocation);
+		final var mimicName = generator.toName(iface, invocation);
 		final var mimicPath = path.resolve(mimicName);
 		if (Files.isReadable(mimicPath)) {
 			logger.debug("Reading mimic from {}", mimicPath);
@@ -103,17 +101,6 @@ public class Mockingbird {
 		final var method = invocation.method();
 
 		return method.getDeclaringClass() == Object.class;
-	}
-
-	/**
-	 * @return the mimic configuration, if present
-	 */
-	private Optional<Path> mimic() {
-		return annotations.getAnnotations()
-			.filter(M.withEquals(Annotation::annotationType, Mimic.class))
-			.findFirst()
-			.map(a -> ((Mimic) a).path())
-			.map(Path::of);
 	}
 
 }
