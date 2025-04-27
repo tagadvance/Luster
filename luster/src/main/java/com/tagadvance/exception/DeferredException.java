@@ -26,6 +26,15 @@ public final class DeferredException {
 	}
 
 	/**
+	 * Alias of {@link #callable(Callable, Supplier)} where the default value is {@literal null}.
+	 */
+	public <V> Supplier<V> callable(final Callable<V> callable) {
+		requireNonNull(callable, "callable must not be null");
+
+		return callable(callable, () -> null);
+	}
+
+	/**
 	 * This method wraps the supplied {@link Callable} in a {@link Supplier} that automatically
 	 * defers checked exceptions to the {@link ExceptionHandler}.
 	 *

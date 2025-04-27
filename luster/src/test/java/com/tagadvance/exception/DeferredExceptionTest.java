@@ -21,7 +21,7 @@ class DeferredExceptionTest {
 	@Test
 	void testCallable() {
 		final var value = new DeferredException(Assertions::fail).callable(
-			DeferredExceptionTest::call, () -> null).get();
+			DeferredExceptionTest::call).get();
 
 		assertNull(value);
 	}
