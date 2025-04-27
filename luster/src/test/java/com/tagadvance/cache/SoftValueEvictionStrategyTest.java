@@ -26,7 +26,7 @@ class SoftValueEvictionStrategyTest {
 	}
 
 	private static CacheEntry newEntry(final Instant creationTime, final Object value) {
-		final var entry = mock(CacheEntry.class);
+		final var entry = mock(SoftCacheEntry.class);
 		when(entry.creationTime()).thenReturn(creationTime);
 		when(entry.value()).thenReturn(value);
 
