@@ -50,8 +50,8 @@ public final class DeferredException {
 		return () -> {
 			try {
 				return callable.call();
-			} catch (final Throwable t) {
-				handler.handleException(t);
+			} catch (final Exception e) {
+				handler.handleException(e);
 			}
 
 			return defaultValue.get();
@@ -63,17 +63,17 @@ public final class DeferredException {
 	 * automatically defers checked exceptions to the {@link ExceptionHandler}.
 	 *
 	 * @param runnable a {@link CheckedRunnable}
-	 * @param <T>      the type of exception that may be thrown
+	 * @param <E>      the type of exception that may be thrown
 	 * @return the {@link Runnable} wrapper
 	 */
-	public <T extends Throwable> Runnable runnable(final CheckedRunnable<T> runnable) {
+	public <E extends Exception> Runnable runnable(final CheckedRunnable<E> runnable) {
 		requireNonNull(runnable, "runnable must not be null");
 
 		return () -> {
 			try {
 				runnable.runChecked();
-			} catch (final Throwable t) {
-				handler.handleException(t);
+			} catch (final Exception e) {
+				handler.handleException(e);
 			}
 		};
 	}
@@ -84,17 +84,17 @@ public final class DeferredException {
 	 *
 	 * @param consumer a {@link CheckedConsumer}
 	 * @param <I>      the type of the input to the operation
-	 * @param <T>      the type of exception that may be thrown
+	 * @param <E>      the type of exception that may be thrown
 	 * @return a {@link Consumer} wrapper
 	 */
-	public <I, T extends Throwable> Consumer<I> consumer(final CheckedConsumer<I, T> consumer) {
+	public <I, E extends Exception> Consumer<I> consumer(final CheckedConsumer<I, E> consumer) {
 		requireNonNull(consumer, "consumer must not be null");
 
 		return v -> {
 			try {
 				consumer.acceptChecked(v);
-			} catch (final Throwable t) {
-				handler.handleException(t);
+			} catch (final Exception e) {
+				handler.handleException(e);
 			}
 		};
 	}
@@ -106,11 +106,11 @@ public final class DeferredException {
 	 * @param function a {@link CheckedFunction}
 	 * @param <I>      the type of the input to the function
 	 * @param <R>      the type of the result of the function
-	 * @param <T>      the type of exception that may be thrown
+	 * @param <E>      the type of exception that may be thrown
 	 * @return a {@link Function} wrapper
 	 */
-	public <I, R, T extends Throwable> Function<I, R> function(
-		final CheckedFunction<I, R, T> function) {
+	public <I, R, E extends Exception> Function<I, R> function(
+		final CheckedFunction<I, R, E> function) {
 		return function(function, () -> null);
 	}
 
@@ -122,19 +122,19 @@ public final class DeferredException {
 	 * @param defaultValue a default value {@link Supplier} to use in the event of an exception
 	 * @param <I>          the type of the input to the function
 	 * @param <R>          the type of the result of the function
-	 * @param <T>          the type of exception that may be thrown
+	 * @param <E>          the type of exception that may be thrown
 	 * @return a {@link Function} wrapper
 	 */
-	public <I, R, T extends Throwable> Function<I, R> function(
-		final CheckedFunction<I, R, T> function, final Supplier<R> defaultValue) {
+	public <I, R, E extends Exception> Function<I, R> function(
+		final CheckedFunction<I, R, E> function, final Supplier<R> defaultValue) {
 		requireNonNull(function, "function must not be null");
 		requireNonNull(defaultValue, "defaultValue must not be null");
 
 		return i -> {
 			try {
 				return function.applyChecked(i);
-			} catch (final Throwable t) {
-				handler.handleException(t);
+			} catch (final Exception e) {
+				handler.handleException(e);
 			}
 
 			return defaultValue.get();
@@ -172,8 +172,8 @@ public final class DeferredException {
 		return v -> {
 			try {
 				return predicate.testChecked(v);
-			} catch (final Throwable t) {
-				handler.handleException(t);
+			} catch (final Exception e) {
+				handler.handleException(e);
 			}
 
 			return defaultValue.get();
@@ -189,9 +189,9 @@ public final class DeferredException {
 		/**
 		 * This method is invoked when an exception is caught by a deferred wrapper.
 		 *
-		 * @param t the exception
+		 * @param e the exception
 		 */
-		void handleException(Throwable t);
+		void handleException(Exception e);
 
 	}
 

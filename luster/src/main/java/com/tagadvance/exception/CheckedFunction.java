@@ -3,31 +3,31 @@ package com.tagadvance.exception;
 import java.util.function.Function;
 
 /**
- * A {@link Function} that throws an exception of type {@link T}.
+ * A {@link Function} that throws an exception of type {@link E}.
  *
  * @param <I> the type of the input to the function
  * @param <R> the type of the result of the function
- * @param <T> the type of exception that may be thrown by this function
+ * @param <E> the type of exception that may be thrown by this function
  */
 @FunctionalInterface
-public interface CheckedFunction<I, R, T extends Throwable> extends Function<I, R> {
+public interface CheckedFunction<I, R, E extends Exception> extends Function<I, R> {
 
 	/**
 	 * This method is like {@link Function#apply(Object)}} except that it may throw an exception of
-	 * type {@link T}.
+	 * type {@link E}.
 	 *
 	 * @param i the type of the input
 	 * @return the function result
-	 * @throws T the type of exception that may be thrown
+	 * @throws E the type of exception that may be thrown
 	 */
-	R applyChecked(I i) throws T;
+	R applyChecked(I i) throws E;
 
 	@Override
 	default R apply(final I i) throws UncheckedExecutionException {
 		try {
 			return applyChecked(i);
-		} catch (final Throwable t) {
-			throw new UncheckedExecutionException(t);
+		} catch (final Exception e) {
+			throw new UncheckedExecutionException(e);
 		}
 	}
 
@@ -41,7 +41,7 @@ public interface CheckedFunction<I, R, T extends Throwable> extends Function<I, 
 	 * @param <E>      the type of exception that may be thrown
 	 * @return the {@link Function} wrapper
 	 */
-	static <T, R, E extends Throwable> Function<T, R> of(final CheckedFunction<T, R, E> function) {
+	static <T, R, E extends Exception> Function<T, R> of(final CheckedFunction<T, R, E> function) {
 		return function;
 	}
 

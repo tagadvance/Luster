@@ -1,27 +1,27 @@
 package com.tagadvance.exception;
 
 /**
- * A {@link Runnable} that throws an exception of type {@link T}.
+ * A {@link Runnable} that throws an exception of type {@link E}.
  *
- * @param <T> the type of exception that may be thrown by this runnable
+ * @param <E> the type of exception that may be thrown by this runnable
  */
 @FunctionalInterface
-public interface CheckedRunnable<T extends Throwable> extends Runnable {
+public interface CheckedRunnable<E extends Exception> extends Runnable {
 
 	/**
 	 * This method is like {@link Runnable#run()} except that it may throw an exception of type
-	 * {@link T}.
+	 * {@link E}.
 	 *
-	 * @throws T the type of exception that may be thrown
+	 * @throws E the type of exception that may be thrown
 	 */
-	void runChecked() throws T;
+	void runChecked() throws E;
 
 	@Override
 	default void run() throws UncheckedExecutionException {
 		try {
 			runChecked();
-		} catch (final Throwable t) {
-			throw new UncheckedExecutionException(t);
+		} catch (final Exception e) {
+			throw new UncheckedExecutionException(e);
 		}
 	}
 
@@ -33,7 +33,7 @@ public interface CheckedRunnable<T extends Throwable> extends Runnable {
 	 * @param <E>      the type of exception that may be thrown
 	 * @return the {@link Runnable} wrapper
 	 */
-	static <E extends Throwable> Runnable of(final CheckedRunnable<E> runnable) {
+	static <E extends Exception> Runnable of(final CheckedRunnable<E> runnable) {
 		return runnable;
 	}
 

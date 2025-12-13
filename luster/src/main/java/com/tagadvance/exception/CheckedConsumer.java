@@ -3,29 +3,29 @@ package com.tagadvance.exception;
 import java.util.function.Consumer;
 
 /**
- * A {@link Consumer} that throws an exception of type {@link T}.
+ * A {@link Consumer} that throws an exception of type {@link E}.
  *
  * @param <I> the type of the input to the operation
- * @param <T> the type of exception that may be thrown by this consumer
+ * @param <E> the type of exception that may be thrown by this consumer
  */
 @FunctionalInterface
-public interface CheckedConsumer<I, T extends Throwable> extends Consumer<I> {
+public interface CheckedConsumer<I, E extends Exception> extends Consumer<I> {
 
 	/**
 	 * This method is like {@link Consumer#accept(Object)} except that it may throw an exception of
-	 * type {@link T}.
+	 * type {@link E}.
 	 *
 	 * @param i the input argument
-	 * @throws T the type of exception that may be thrown
+	 * @throws E the type of exception that may be thrown
 	 */
-	void acceptChecked(I i) throws T;
+	void acceptChecked(I i) throws E;
 
 	@Override
 	default void accept(I i) throws UncheckedExecutionException {
 		try {
 			acceptChecked(i);
-		} catch (final Throwable T) {
-			throw new UncheckedExecutionException(T);
+		} catch (final Exception e) {
+			throw new UncheckedExecutionException(e);
 		}
 	}
 
@@ -35,10 +35,10 @@ public interface CheckedConsumer<I, T extends Throwable> extends Consumer<I> {
 	 *
 	 * @param consumer a {@link CheckedConsumer}
 	 * @param <I>      the type of the input to the operation
-	 * @param <T>      the type of exception that may be thrown
+	 * @param <E>      the type of exception that may be thrown
 	 * @return the {@link Consumer} wrapper
 	 */
-	static <I, T extends Throwable> Consumer<I> of(final CheckedConsumer<I, T> consumer) {
+	static <I, E extends Exception> Consumer<I> of(final CheckedConsumer<I, E> consumer) {
 		return consumer;
 	}
 
