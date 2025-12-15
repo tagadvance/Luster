@@ -1,5 +1,6 @@
 package com.tagadvance.utilities;
 
+import com.google.common.base.Stopwatch;
 import java.time.Duration;
 import java.util.concurrent.Callable;
 import java.util.function.BiFunction;
@@ -13,14 +14,12 @@ import java.util.function.Supplier;
  */
 public class Benchmark {
 
-	public static void profile(final Runnable runnable,
-		final Consumer<Duration> durationConsumer) {
-		final var start = System.nanoTime();
+	public static void profile(final Runnable runnable, final Consumer<Duration> durationConsumer) {
+		final var stopwatch = Stopwatch.createStarted();
 		try {
 			runnable.run();
 		} finally {
-			final var stop = System.nanoTime();
-			final var elapsed = Duration.ofNanos(stop - start);
+			final var elapsed = stopwatch.elapsed();
 			durationConsumer.accept(elapsed);
 		}
 	}
@@ -32,12 +31,11 @@ public class Benchmark {
 
 	public static <V> V profile(final Callable<V> callable,
 		final Consumer<Duration> durationConsumer) throws Exception {
-		final var start = System.nanoTime();
+		final var stopwatch = Stopwatch.createStarted();
 		try {
 			return callable.call();
 		} finally {
-			final var stop = System.nanoTime();
-			final var elapsed = Duration.ofNanos(stop - start);
+			final var elapsed = stopwatch.elapsed();
 			durationConsumer.accept(elapsed);
 		}
 	}
@@ -49,12 +47,11 @@ public class Benchmark {
 
 	public static <T> T profile(final Supplier<T> supplier,
 		final Consumer<Duration> durationConsumer) {
-		final var start = System.nanoTime();
+		final var stopwatch = Stopwatch.createStarted();
 		try {
 			return supplier.get();
 		} finally {
-			final var stop = System.nanoTime();
-			final var elapsed = Duration.ofNanos(stop - start);
+			final var elapsed = stopwatch.elapsed();
 			durationConsumer.accept(elapsed);
 		}
 	}
@@ -67,12 +64,11 @@ public class Benchmark {
 	public static <T> Predicate<T> wrap(final Predicate<T> predicate,
 		final Consumer<Duration> durationConsumer) {
 		return arg -> {
-			final var start = System.nanoTime();
+			final var stopwatch = Stopwatch.createStarted();
 			try {
 				return predicate.test(arg);
 			} finally {
-				final var stop = System.nanoTime();
-				final var elapsed = Duration.ofNanos(stop - start);
+				final var elapsed = stopwatch.elapsed();
 				durationConsumer.accept(elapsed);
 			}
 		};
@@ -81,12 +77,11 @@ public class Benchmark {
 	public static <T, R> Function<T, R> wrap(final Function<T, R> function,
 		final Consumer<Duration> durationConsumer) {
 		return arg -> {
-			final var start = System.nanoTime();
+			final var stopwatch = Stopwatch.createStarted();
 			try {
 				return function.apply(arg);
 			} finally {
-				final var stop = System.nanoTime();
-				final var elapsed = Duration.ofNanos(stop - start);
+				final var elapsed = stopwatch.elapsed();
 				durationConsumer.accept(elapsed);
 			}
 		};
@@ -95,12 +90,11 @@ public class Benchmark {
 	public static <T, U, R> BiFunction<T, U, R> wrap(final BiFunction<T, U, R> function,
 		final Consumer<Duration> durationConsumer) {
 		return (arg1, arg2) -> {
-			final var start = System.nanoTime();
+			final var stopwatch = Stopwatch.createStarted();
 			try {
 				return function.apply(arg1, arg2);
 			} finally {
-				final var stop = System.nanoTime();
-				final var elapsed = Duration.ofNanos(stop - start);
+				final var elapsed = stopwatch.elapsed();
 				durationConsumer.accept(elapsed);
 			}
 		};
@@ -109,12 +103,11 @@ public class Benchmark {
 	public static <T> Consumer<T> wrap(final Consumer<T> consumer,
 		final Consumer<Duration> durationConsumer) {
 		return arg -> {
-			final var start = System.nanoTime();
+			final var stopwatch = Stopwatch.createStarted();
 			try {
 				consumer.accept(arg);
 			} finally {
-				final var stop = System.nanoTime();
-				final var elapsed = Duration.ofNanos(stop - start);
+				final var elapsed = stopwatch.elapsed();
 				durationConsumer.accept(elapsed);
 			}
 		};

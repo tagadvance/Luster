@@ -1,5 +1,6 @@
 package com.tagadvance.stack;
 
+import com.google.common.base.Throwables;
 import com.tagadvance.utilities.Patterns;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -21,7 +22,28 @@ public class StackTraces {
 		final var stackTrace = Thread.currentThread().getStackTrace();
 		final var regex = "^(com\\.sun|java|javax|jdk|org\\.w3c\\.dom|org\\.xml\\.sax)\\.";
 
-		return Stream.of(stackTrace).filter(retain(regex).negate()).skip(1);
+		return Stream.of(stackTrace)
+			.filter(remove(StackTraces.class))
+			.filter(retain(regex).negate());
+	}
+
+	// TODO: javadoc and unit test
+	public static Predicate<StackTraceElement> remove(final Class<?> clazz) {
+		return e -> e.getClassName().equals(clazz.getName());
+	}
+
+	/**
+	 * An alias of {@link #retain(String)}.{@link Predicate#negate() negate()}.
+	 */
+	public static Predicate<StackTraceElement> remove(final String classNameRegex) {
+		return retain(classNameRegex).negate();
+	}
+
+	/**
+	 * An alias of {@link #retain(Pattern)}.{@link Predicate#negate() negate()}.
+	 */
+	public static Predicate<StackTraceElement> remove(final Pattern pattern) {
+		return retain(pattern).negate();
 	}
 
 	/**
@@ -57,23 +79,26 @@ public class StackTraces {
 	 */
 	// TODO: unit test
 	public static void retain(final Throwable throwable, final Pattern pattern) {
-		var stackTrace = throwable.getStackTrace();
-		final var prunedStackTrace = Stream.of(stackTrace)
-			.filter(retain(pattern))
-			.toArray(StackTraceElement[]::new);
-		throwable.setStackTrace(prunedStackTrace);
+		retain(throwable, retain(pattern));
+	}
 
-		final var cause = throwable.getCause();
-		if (cause != null) {
-			retain(cause, pattern);
-		}
+	// TODO: unit test and javadoc
+	public static void retain(final Throwable throwable,
+		final Predicate<StackTraceElement> filter) {
+		Throwables.getCausalChain(throwable).forEach(e -> {
+			final var stackTrace = e.getStackTrace();
+			final var prunedStackTrace = Stream.of(stackTrace)
+				.filter(filter)
+				.toArray(StackTraceElement[]::new);
+			e.setStackTrace(prunedStackTrace);
+		});
 	}
 
 	/**
 	 * @return {@literal true} if this code is being called from a JUnit test
 	 */
 	public static boolean isTesting() {
-		return asStream().anyMatch(retain("org.junit.*"));
+		return asStream().anyMatch(retain("org\\.junit"));
 	}
 
 	private StackTraces() {

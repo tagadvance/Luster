@@ -1,13 +1,13 @@
 package com.tagadvance.stack;
 
 import static java.util.Objects.requireNonNull;
-import static java.util.function.Function.identity;
 
 import com.tagadvance.reflection.M;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.LinkedHashSet;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -53,7 +53,9 @@ public class StackAnnotations implements Annotations {
 		});
 		final var packageAnnotations = packages.stream().flatMap(M::getAnnotations);
 
-		return Stream.of(methodsAndClasses, packageAnnotations).flatMap(identity()).distinct();
+		return Stream.of(methodsAndClasses, packageAnnotations)
+			.flatMap(Function.identity())
+			.distinct();
 	}
 
 	/**
@@ -61,7 +63,10 @@ public class StackAnnotations implements Annotations {
 	 * {@link Predicate prefilter} applied
 	 */
 	public Stream<StackTraceElementAccessor> accessorStream() {
-		return StackTraces.asStream().skip(1).filter(filter).map(StackTraceElementAccessor::new);
+		return StackTraces.asStream()
+			.filter(StackTraces.remove(getClass()))
+			.filter(filter)
+			.map(StackTraceElementAccessor::new);
 	}
 
 	/**

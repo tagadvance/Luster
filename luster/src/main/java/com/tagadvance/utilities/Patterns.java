@@ -5,7 +5,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.tagadvance.exception.UncheckedExecutionException;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -20,6 +19,7 @@ import java.util.regex.Pattern;
  */
 public class Patterns {
 
+	@SuppressWarnings("all")
 	private static final LoadingCache<PatternCacheKey, Pattern> patternCache = CacheBuilder.newBuilder()
 		.expireAfterAccess(1, TimeUnit.MINUTES)
 		.build(new CacheLoader<>() {
@@ -67,17 +67,6 @@ public class Patterns {
 	}
 
 	private record PatternCacheKey(String regex, int flags) {
-
-		@Override
-		public boolean equals(final Object o) {
-			return o instanceof final PatternCacheKey that && flags == that.flags && Objects.equals(
-				regex, that.regex);
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hash(regex, flags);
-		}
 
 	}
 

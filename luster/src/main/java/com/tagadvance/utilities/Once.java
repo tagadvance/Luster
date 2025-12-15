@@ -1,9 +1,11 @@
 package com.tagadvance.utilities;
 
+import static java.util.Objects.requireNonNull;
+
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 /**
@@ -11,29 +13,19 @@ import java.util.function.Supplier;
  */
 public final class Once {
 
+	@SuppressWarnings("all")
 	public static <T> Supplier<T> supplier(final Supplier<T> supplier) {
-		final var atomicValue = new AtomicReference<T>();
-		final var lock = new ReentrantLock();
+		requireNonNull(supplier, "supplier must not be null");
 
-		return () -> {
-			final var value = atomicValue.get();
-			if (value != null) {
-				return value;
-			}
+		final var reference = new AtomicReference<Optional<T>>();
 
-			lock.lock();
-			try {
-				final var newValue = supplier.get();
-				atomicValue.set(newValue);
-
-				return newValue;
-			} finally {
-				lock.unlock();
-			}
-		};
+		return () -> reference.updateAndGet(
+			value -> value == null ? Optional.of(supplier).map(Supplier::get) : value).orElse(null);
 	}
 
 	public static Runnable runnable(final Runnable runnable) {
+		requireNonNull(runnable, "runnable must not be null");
+
 		final var isFirstRun = new AtomicBoolean();
 
 		return () -> {
@@ -43,34 +35,36 @@ public final class Once {
 		};
 	}
 
+	@SuppressWarnings("all")
 	public static <V> Callable<V> callable(final Callable<V> callable) {
-		final var atomicValue = new AtomicReference<V>();
+		requireNonNull(callable, "callable must not be null");
+
+		final var atomicValue = new AtomicReference<Optional<V>>();
 		final var atomicException = new AtomicReference<Exception>();
-		final var lock = new ReentrantLock();
 
 		return () -> {
-			final var value = atomicValue.get();
-			if (value != null) {
-				return value;
-			}
+			synchronized (atomicValue) {
+				try {
+					final var value = atomicValue.get();
+					if (value != null) {
+						return value.orElse(null);
+					}
 
-			final var exception = atomicException.get();
-			if (exception != null) {
-				throw exception;
-			}
+					final var exception = atomicException.get();
+					if (exception != null) {
+						throw exception;
+					}
 
-			lock.lock();
-			try {
-				final var callValue = callable.call();
-				atomicValue.set(callValue);
+					final var callValue = callable.call();
+					final var optional = Optional.ofNullable(callValue);
+					atomicValue.set(optional);
 
-				return callValue;
-			} catch (final Exception e) {
-				atomicException.set(e);
+					return callValue;
+				} catch (final Exception e) {
+					atomicException.set(e);
 
-				throw e;
-			} finally {
-				lock.unlock();
+					throw e;
+				}
 			}
 		};
 	}
