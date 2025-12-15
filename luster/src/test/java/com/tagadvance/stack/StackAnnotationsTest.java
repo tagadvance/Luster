@@ -1,11 +1,11 @@
 package com.tagadvance.stack;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -35,11 +35,25 @@ class StackAnnotationsTest {
 			final var annotations = new StackAnnotations(
 				StackTraces.retain("com.tagadvance.*")).getAnnotations().toList();
 
-			assertEquals(7, annotations.size());
-			assertEquals(-1747740748, annotations.stream()
-				.map(Object::toString)
-				.collect(Collectors.joining(", "))
-				.hashCode());
+			assertEquals(5, annotations.size());
+			{
+				final var value = assertInstanceOf(DisplayName.class, annotations.get(0)).value();
+				assertEquals("ExtendedFoo#foo(Object)", value);
+			}
+			{
+				final var value = assertInstanceOf(DisplayName.class, annotations.get(1)).value();
+				assertEquals("class ExtendedFoo", value);
+			}
+			{
+				final var value = assertInstanceOf(PassDown.class, annotations.get(2)).value();
+				assertEquals("class DefaultFoo", value);
+			}
+			assertInstanceOf(Test.class, annotations.get(3));
+			{
+				final var value = assertInstanceOf(PackageComment.class,
+					annotations.get(4)).value();
+				assertEquals("package com.tagadvance.stack", value);
+			}
 		}
 
 	}

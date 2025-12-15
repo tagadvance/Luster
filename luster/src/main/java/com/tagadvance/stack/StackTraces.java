@@ -29,7 +29,7 @@ public class StackTraces {
 
 	// TODO: javadoc and unit test
 	public static Predicate<StackTraceElement> remove(final Class<?> clazz) {
-		return e -> e.getClassName().equals(clazz.getName());
+		return retain(clazz).negate();
 	}
 
 	/**
@@ -44,6 +44,10 @@ public class StackTraces {
 	 */
 	public static Predicate<StackTraceElement> remove(final Pattern pattern) {
 		return retain(pattern).negate();
+	}
+
+	public static Predicate<StackTraceElement> retain(final Class<?> clazz) {
+		return e -> e.getClassName().equals(clazz.getName());
 	}
 
 	/**

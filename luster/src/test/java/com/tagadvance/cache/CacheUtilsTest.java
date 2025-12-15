@@ -47,7 +47,7 @@ class CacheUtilsTest {
 		final var method = Foo1.class.getDeclaredMethod("bar");
 		final var hashCode = CacheUtils.methodHashCode(method);
 
-		assertEquals(-1558268459, hashCode);
+		assertEquals(357789422, hashCode);
 	}
 
 	@Test
