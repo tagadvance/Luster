@@ -24,7 +24,7 @@ import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link Mirror} is a utility to simply reflection through the use of {@link Stream streams}.
+ * {@link Mirror} is a utility to simplify reflection through the use of {@link Stream streams}.
  *
  * <p>This class is deliberately not {@literal final}: {@link M} extends it to provide a short
  * alias. Do not "fix" it.
@@ -328,7 +328,7 @@ public class Mirror {
 	 * <p>Bridge and synthetic methods come through. Every generic override produces a bridge
 	 * method, so a {@link Stream stream} over a concrete {@link Comparable} implementation yields
 	 * two {@literal compareTo} entries with different parameter types. Filter them with
-	 * {@link #isBridge()} or {@link #isSynthetic()}.
+	 * {@link #isBridge(Member)} or {@link #isSynthetic(Member)}.
 	 *
 	 * <p>{@link Stream#distinct()} leans on {@link Method#equals(Object)}, which includes the
 	 * declaring class, so an overridden method appears once per class in the hierarchy that
@@ -661,22 +661,24 @@ public class Mirror {
 	}
 
 	/**
-	 * @return a {@link Predicate filter} that retains bridge {@link Method methods}, i.e. the
-	 * synthetic overloads the compiler generates so that a generic override is reachable through
-	 * its erased signature
+	 * @param member a {@link Member member}
+	 * @return {@literal true} if {@literal member} is a bridge {@link Method method}, i.e. one of
+	 * the synthetic overloads the compiler generates so that a generic override is reachable
+	 * through its erased signature
 	 * @see Method#isBridge()
 	 */
-	public static Predicate<Member> isBridge() {
-		return member -> member instanceof Method method && method.isBridge();
+	public static boolean isBridge(final Member member) {
+		return member instanceof final Method method && method.isBridge();
 	}
 
 	/**
-	 * @return a {@link Predicate filter} that retains synthetic {@link Member members}, i.e. those
-	 * introduced by the compiler rather than declared in source
+	 * @param member a {@link Member member}
+	 * @return {@literal true} if {@literal member} was introduced by the compiler rather than
+	 * declared in source
 	 * @see Member#isSynthetic()
 	 */
-	public static Predicate<Member> isSynthetic() {
-		return Member::isSynthetic;
+	public static boolean isSynthetic(final Member member) {
+		return member.isSynthetic();
 	}
 
 	/**
