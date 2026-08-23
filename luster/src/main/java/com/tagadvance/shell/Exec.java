@@ -1,6 +1,6 @@
 package com.tagadvance.shell;
 
-import com.tagadvance.exception.CheckedSupplier;
+import com.tagadvance.exception.ThrowingSupplier;
 import com.tagadvance.utilities.Sleep;
 import java.io.BufferedReader;
 import java.io.Closeable;
@@ -56,7 +56,7 @@ public final class Exec implements Closeable {
 	 * @param mixedConsumer   a callback that will receive the output from both STDOUT and STDERR.
 	 * @throws IOException if an I/O error occurs
 	 */
-	public void start(final CheckedSupplier<Process, IOException> processSupplier,
+	public void start(final ThrowingSupplier<Process, IOException> processSupplier,
 		final Consumer<String> mixedConsumer) throws IOException {
 		start(processSupplier, mixedConsumer, mixedConsumer);
 	}
@@ -69,7 +69,7 @@ public final class Exec implements Closeable {
 	 * @param errConsumer     a callback that will receive the output from STDERR
 	 * @throws IOException if an I/O error occurs
 	 */
-	public void start(final CheckedSupplier<Process, IOException> processSupplier,
+	public void start(final ThrowingSupplier<Process, IOException> processSupplier,
 		final Consumer<String> outConsumer, final Consumer<String> errConsumer) throws IOException {
 		if (!isAlive.get()) {
 			throw new IOException("%s is already closed".formatted(getClass().getSimpleName()));

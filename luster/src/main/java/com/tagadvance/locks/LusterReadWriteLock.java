@@ -1,8 +1,8 @@
 package com.tagadvance.locks;
 
-import com.tagadvance.exception.CheckedCallable;
-import com.tagadvance.exception.CheckedRunnable;
-import com.tagadvance.exception.UncheckedExecutionException;
+import com.tagadvance.exception.ThrowingCallable;
+import com.tagadvance.exception.ThrowingRunnable;
+import com.tagadvance.exception.UncheckedException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -41,25 +41,25 @@ public interface LusterReadWriteLock extends ReadWriteLock {
 		return lock().writeLock();
 	}
 
-	default <E extends Exception> void readLock(final CheckedRunnable<E> runnable) {
+	default <E extends Exception> void readLock(final ThrowingRunnable<E> runnable) throws E {
 		readLock().lock();
 		try {
-			runnable.run();
+			runnable.runChecked();
 		} finally {
 			readLock().unlock();
 		}
 	}
 
-	default <E extends Exception> void writeLock(final CheckedRunnable<E> runnable) {
+	default <E extends Exception> void writeLock(final ThrowingRunnable<E> runnable) throws E {
 		writeLock().lock();
 		try {
-			runnable.run();
+			runnable.runChecked();
 		} finally {
 			writeLock().unlock();
 		}
 	}
 
-	default <V, E extends Exception> V readLock(final CheckedCallable<V, E> callable) throws E {
+	default <V, E extends Exception> V readLock(final ThrowingCallable<V, E> callable) throws E {
 		readLock().lock();
 		try {
 			return callable.call();
@@ -68,7 +68,7 @@ public interface LusterReadWriteLock extends ReadWriteLock {
 		}
 	}
 
-	default <V, E extends Exception> V writeLock(final CheckedCallable<V, E> callable) throws E {
+	default <V, E extends Exception> V writeLock(final ThrowingCallable<V, E> callable) throws E {
 		writeLock().lock();
 		try {
 			return callable.call();
@@ -77,7 +77,7 @@ public interface LusterReadWriteLock extends ReadWriteLock {
 		}
 	}
 
-	default <V> V readLockUnchecked(final Callable<V> callable) throws UncheckedExecutionException {
+	default <V> V readLockUnchecked(final Callable<V> callable) throws UncheckedException {
 		readLock().lock();
 		try {
 			return callable.call();
@@ -86,14 +86,14 @@ public interface LusterReadWriteLock extends ReadWriteLock {
 				throw re;
 			}
 
-			throw new UncheckedExecutionException(e);
+			throw new UncheckedException(e);
 		} finally {
 			readLock().unlock();
 		}
 	}
 
 	default <V> V writeLockUnchecked(final Callable<V> callable)
-		throws UncheckedExecutionException {
+		throws UncheckedException {
 		writeLock().lock();
 		try {
 			return callable.call();
@@ -102,7 +102,7 @@ public interface LusterReadWriteLock extends ReadWriteLock {
 				throw re;
 			}
 
-			throw new UncheckedExecutionException(e);
+			throw new UncheckedException(e);
 		} finally {
 			writeLock().unlock();
 		}
