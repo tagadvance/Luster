@@ -15,22 +15,35 @@ import java.util.function.Supplier;
 public final class Once {
 
 	/**
+	 * Wrap the supplied {@link Supplier} so that it is invoked at most once, no matter how many
+	 * threads call the returned {@link Supplier}. The value it returns, {@code null} included, is
+	 * cached and returned to every subsequent caller.
 	 *
-	 * @param supplier
-	 * @return
-	 * @param <T>
-	 * @deprecated Use {@link Suppliers#memoize(com.google.common.base.Supplier)} instead.
+	 * <p>This delegates to {@link Suppliers#memoize(com.google.common.base.Supplier)}, but takes
+	 * and returns the {@link java.util.function} type. Guava is an implementation detail of this
+	 * library rather than part of its API, so callers should not need it on their own classpath to
+	 * memoize a {@link Supplier}.</p>
+	 *
+	 * @param supplier the {@link Supplier} to invoke once
+	 * @param <T>      the type of the supplied value
+	 * @return the memoizing {@link Supplier}
 	 */
-	@SuppressWarnings("all")
 	public static <T> Supplier<T> supplier(final Supplier<T> supplier) {
 		requireNonNull(supplier, "supplier must not be null");
 
-		final var reference = new AtomicReference<Optional<T>>();
+		// Guava memoizes under a lock; AtomicReference#updateAndGet would re-invoke on CAS failure
+		final var memoized = Suppliers.memoize(supplier::get);
 
-		return () -> reference.updateAndGet(
-			value -> value == null ? Optional.of(supplier).map(Supplier::get) : value).orElse(null);
+		return memoized::get;
 	}
 
+	/**
+	 * Wrap the supplied {@link Runnable} so that it is invoked at most once, no matter how many
+	 * threads call the returned {@link Runnable}.
+	 *
+	 * @param runnable the {@link Runnable} to invoke once
+	 * @return the {@link Runnable} wrapper
+	 */
 	public static Runnable runnable(final Runnable runnable) {
 		requireNonNull(runnable, "runnable must not be null");
 
@@ -43,36 +56,37 @@ public final class Once {
 		};
 	}
 
-	@SuppressWarnings("all")
+	/**
+	 * Wrap the supplied {@link Callable} so that it completes successfully at most once, no matter
+	 * how many threads call the returned {@link Callable}. The value it returns, {@code null}
+	 * included, is cached and returned to every subsequent caller.
+	 *
+	 * <p>A failure is <em>not</em> cached: the exception propagates to the caller that provoked it
+	 * and the next caller invokes the {@link Callable} again. Caching the exception instead would
+	 * hand later callers a stack trace belonging to another thread, and would make a transient
+	 * failure permanent.</p>
+	 *
+	 * @param callable the {@link Callable} to invoke once
+	 * @param <V>      the type of the returned value
+	 * @return the memoizing {@link Callable}
+	 */
 	public static <V> Callable<V> callable(final Callable<V> callable) {
 		requireNonNull(callable, "callable must not be null");
 
-		final var atomicValue = new AtomicReference<Optional<V>>();
-		final var atomicException = new AtomicReference<Exception>();
+		final var lock = new Object();
+		final var reference = new AtomicReference<Optional<V>>();
 
 		return () -> {
-			synchronized (atomicValue) {
-				try {
-					final var value = atomicValue.get();
-					if (value != null) {
-						return value.orElse(null);
-					}
-
-					final var exception = atomicException.get();
-					if (exception != null) {
-						throw exception;
-					}
-
-					final var callValue = callable.call();
-					final var optional = Optional.ofNullable(callValue);
-					atomicValue.set(optional);
-
-					return callValue;
-				} catch (final Exception e) {
-					atomicException.set(e);
-
-					throw e;
+			synchronized (lock) {
+				final var cached = reference.get();
+				if (cached != null) {
+					return cached.orElse(null);
 				}
+
+				final var value = callable.call();
+				reference.set(Optional.ofNullable(value));
+
+				return value;
 			}
 		};
 	}
