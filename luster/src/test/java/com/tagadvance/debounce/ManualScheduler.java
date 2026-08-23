@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
  * A {@link ScheduledExecutorService} with a virtual clock, so debounce timing can be tested
  * without sleeping. Only the operations {@link Debouncer} actually uses are implemented.
  */
-final class ManualScheduler implements ScheduledExecutorService {
+public final class ManualScheduler implements ScheduledExecutorService {
 
 	private static final int MAX_ITERATIONS = 1_000;
 
@@ -27,7 +27,7 @@ final class ManualScheduler implements ScheduledExecutorService {
 	/**
 	 * Advances the clock and runs everything that comes due.
 	 */
-	void advance(final Duration duration) {
+	public void advance(final Duration duration) {
 		now += duration.toNanos();
 		runDueTasks();
 	}
@@ -35,7 +35,7 @@ final class ManualScheduler implements ScheduledExecutorService {
 	/**
 	 * Runs everything already due without moving the clock.
 	 */
-	void runDueTasks() {
+	public void runDueTasks() {
 		for (int i = 0; i < MAX_ITERATIONS; i++) {
 			final var due = tasks.stream()
 				.filter(task -> !task.cancelled && task.time <= now)
@@ -53,7 +53,7 @@ final class ManualScheduler implements ScheduledExecutorService {
 		throw new IllegalStateException("tasks kept rescheduling themselves");
 	}
 
-	int pendingTaskCount() {
+	public int pendingTaskCount() {
 		return (int) tasks.stream().filter(task -> !task.cancelled).count();
 	}
 
