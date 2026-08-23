@@ -13,7 +13,7 @@ import org.slf4j.event.Level;
 class RunawayLogReducerTest {
 
 	@Test
-	@Disabled("RunawayLogReducer.reduce() coalescing is unimplemented; see TODO/05-logging.md")
+	@Disabled("RunawayLogReducer.reduce() coalescing is unimplemented; see tmp/TODO/05-logging.md")
 	void reduceCoalescesDuplicates() {
 		final var logEntries = getLogEntries();
 
