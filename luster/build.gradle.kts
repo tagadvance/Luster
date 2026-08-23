@@ -35,7 +35,7 @@ tasks.named<Test>("test") {
 }
 
 group = "com.tagadvance"
-version = "2.1.0"
+version = "3.0.0-SNAPSHOT"
 
 java {
     withSourcesJar()
