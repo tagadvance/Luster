@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -46,6 +47,21 @@ class MirrorTest {
 	}
 
 	static void canAccessStaticFoo() {
+	}
+
+	/**
+	 * canAccess(null) throws IllegalArgumentException for an instance member rather than returning
+	 * false, so canAccessStatic() has to reject instance members before testing them.
+	 */
+	@Test
+	void canAccessStaticRejectsInstanceMembers() {
+		final var names = Stream.of(getClass())
+			.flatMap(M::getFields)
+			.filter(M.canAccessStatic())
+			.map(Field::getName)
+			.toList();
+
+		assertEquals(List.of("staticObject"), names);
 	}
 
 	@Test

@@ -27,6 +27,12 @@ import java.util.stream.Stream;
 public class Mirror {
 
 	/**
+	 * Note that {@link AccessibleObject#canAccess(Object)} throws
+	 * {@link IllegalArgumentException} rather than returning {@literal false} when
+	 * {@literal instance} is {@literal null} and the object under test is an instance member, or
+	 * when {@literal instance} is not an instance of the declaring class. Use
+	 * {@link #canAccessStatic()} to test static access.
+	 *
 	 * @param instance an {@link Object object}
 	 * @return a {@link Predicate filter} that retains {@link AccessibleObject accessible objects}
 	 * that can be accessed
@@ -38,11 +44,20 @@ public class Mirror {
 
 	/**
 	 * @return a {@link Predicate filter} that retains {@link AccessibleObject accessible objects}
-	 * that can be accessed statically
+	 * that can be accessed statically. Instance members are rejected rather than tested, so this
+	 * {@link Predicate filter} is safe to apply to a {@link Stream stream} that mixes static and
+	 * instance members.
 	 * @see #canAccess(Object)
 	 */
 	public static Predicate<AccessibleObject> canAccessStatic() {
-		return canAccess(null);
+		// canAccess(null) throws IllegalArgumentException for an instance member instead of
+		// returning false, so instance members must never reach it.
+		return accessibleObject -> {
+			final var isInstanceMember = accessibleObject instanceof Member member
+				&& !(accessibleObject instanceof Constructor<?>) && !isStatic(member);
+
+			return !isInstanceMember && accessibleObject.canAccess(null);
+		};
 	}
 
 	/**
