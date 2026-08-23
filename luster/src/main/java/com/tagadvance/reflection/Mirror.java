@@ -21,6 +21,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 
 /**
  * {@link Mirror} is a utility to simply reflection through the use of {@link Stream streams}.
@@ -60,7 +61,7 @@ public class Mirror {
 	 * that can be accessed
 	 * @see AccessibleObject#canAccess(Object)
 	 */
-	public static Predicate<AccessibleObject> canAccess(final Object instance) {
+	public static Predicate<AccessibleObject> canAccess(final @Nullable Object instance) {
 		return accessibleObject -> accessibleObject.canAccess(instance);
 	}
 
@@ -298,7 +299,7 @@ public class Mirror {
 	 * @see Field#get(Object)
 	 */
 	@SuppressWarnings("unchecked")
-	public static <R> Function<Field, R> get(final Object instance) {
+	public static <R> Function<Field, R> get(final @Nullable Object instance) {
 		return field -> {
 			try {
 				return (R) field.get(instance);
@@ -357,7 +358,8 @@ public class Mirror {
 	 * @see Method#invoke(Object, Object...)
 	 */
 	@SuppressWarnings("unchecked")
-	public static <R> Function<Method, R> invoke(final Object instance, final Object... arguments) {
+	public static <R> Function<Method, R> invoke(final @Nullable Object instance,
+		final @Nullable Object... arguments) {
 		return method -> {
 			try {
 				return (R) method.invoke(instance, arguments);
@@ -375,7 +377,7 @@ public class Mirror {
 	 * arguments
 	 * @see #invoke(Object, Object...)
 	 */
-	public static <R> Function<Method, R> invokeStatic(final Object... arguments) {
+	public static <R> Function<Method, R> invokeStatic(final @Nullable Object... arguments) {
 		return invoke(null, arguments);
 	}
 
