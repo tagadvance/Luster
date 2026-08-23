@@ -80,34 +80,34 @@ public interface OnError {
 	}
 
 	/**
-	 * Alias of {@link #callable(ThrowingCallable, Supplier)} where the default value is
-	 * {@literal null}. Prefer {@link #optionalCallable(ThrowingCallable)}, which does not conflate
+	 * Alias of {@link #supplier(ThrowingSupplier, Supplier)} where the default value is
+	 * {@literal null}. Prefer {@link #optionalSupplier(ThrowingSupplier)}, which does not conflate
 	 * failure with a legitimate {@literal null}.
 	 *
-	 * @param callable a {@link ThrowingCallable}
+	 * @param supplier a {@link ThrowingSupplier}
 	 * @param <V>      the result type
 	 * @param <E>      the type of exception that may be thrown
 	 * @return a {@link Supplier} that defers failures to this handler
 	 */
-	default <V, E extends Exception> Supplier<V> callable(final ThrowingCallable<V, E> callable) {
-		return callable(callable, () -> null);
+	default <V, E extends Exception> Supplier<V> supplier(final ThrowingSupplier<V, E> supplier) {
+		return supplier(supplier, () -> null);
 	}
 
 	/**
-	 * @param callable     a {@link ThrowingCallable}
+	 * @param supplier     a {@link ThrowingSupplier}
 	 * @param defaultValue a default value {@link Supplier} to use in the event of an exception
 	 * @param <V>          the result type
 	 * @param <E>          the type of exception that may be thrown
 	 * @return a {@link Supplier} that defers failures to this handler
 	 */
-	default <V, E extends Exception> Supplier<V> callable(final ThrowingCallable<V, E> callable,
+	default <V, E extends Exception> Supplier<V> supplier(final ThrowingSupplier<V, E> supplier,
 		final Supplier<V> defaultValue) {
-		requireNonNull(callable, "callable must not be null");
+		requireNonNull(supplier, "supplier must not be null");
 		requireNonNull(defaultValue, "defaultValue must not be null");
 
 		return () -> {
 			try {
-				return callable.call();
+				return supplier.get();
 			} catch (final Exception e) {
 				handleException(e);
 			}
@@ -117,18 +117,18 @@ public interface OnError {
 	}
 
 	/**
-	 * @param callable a {@link ThrowingCallable}
+	 * @param supplier a {@link ThrowingSupplier}
 	 * @param <V>      the result type
 	 * @param <E>      the type of exception that may be thrown
 	 * @return a {@link Supplier} yielding {@link Optional#empty()} on failure
 	 */
-	default <V, E extends Exception> Supplier<Optional<V>> optionalCallable(
-		final ThrowingCallable<V, E> callable) {
-		requireNonNull(callable, "callable must not be null");
+	default <V, E extends Exception> Supplier<Optional<V>> optionalSupplier(
+		final ThrowingSupplier<V, E> supplier) {
+		requireNonNull(supplier, "supplier must not be null");
 
 		return () -> {
 			try {
-				return Optional.ofNullable(callable.call());
+				return Optional.ofNullable(supplier.get());
 			} catch (final Exception e) {
 				handleException(e);
 			}

@@ -1,6 +1,6 @@
 package com.tagadvance.locks;
 
-import com.tagadvance.exception.ThrowingCallable;
+import com.tagadvance.exception.ThrowingSupplier;
 import com.tagadvance.exception.ThrowingRunnable;
 import com.tagadvance.exception.UncheckedException;
 import java.util.concurrent.Callable;
@@ -59,19 +59,19 @@ public interface LusterReadWriteLock extends ReadWriteLock {
 		}
 	}
 
-	default <V, E extends Exception> V readLock(final ThrowingCallable<V, E> callable) throws E {
+	default <V, E extends Exception> V readLock(final ThrowingSupplier<V, E> supplier) throws E {
 		readLock().lock();
 		try {
-			return callable.call();
+			return supplier.get();
 		} finally {
 			readLock().unlock();
 		}
 	}
 
-	default <V, E extends Exception> V writeLock(final ThrowingCallable<V, E> callable) throws E {
+	default <V, E extends Exception> V writeLock(final ThrowingSupplier<V, E> supplier) throws E {
 		writeLock().lock();
 		try {
-			return callable.call();
+			return supplier.get();
 		} finally {
 			writeLock().unlock();
 		}

@@ -53,17 +53,18 @@ expressed over a varargs of type tokens.
 ## Throwing types — declare an honest `throws` in your own API
 
 `ThrowingRunnable`, `ThrowingConsumer`, `ThrowingFunction`, `ThrowingPredicate`,
-`ThrowingComparator`, `ThrowingSupplier`, `ThrowingCallable` extend nothing and propagate
+`ThrowingComparator`, `ThrowingSupplier` extend nothing and propagate
 `E` to the caller. Use them as parameter types where you want `E` visible:
 
 ```java
-default <V, E extends Exception> V readLock(ThrowingCallable<V, E> callable) throws E {
+default <V, E extends Exception> V readLock(ThrowingSupplier<V, E> supplier) throws E {
 	...
 }
 ```
 
 Each adapter extends its throwing counterpart, so anything accepting a throwing type also
-accepts the matching adapter.
+accepts the matching adapter. There is no `ThrowingCallable`: `Callable.call()` declares
+`throws Exception`, which erases `E`, so `ThrowingSupplier` covers that role too.
 
 ## `OnError` — handle each failure and keep going
 
@@ -75,7 +76,7 @@ Stream.of(paths)
 	.forEach(System.err::println);
 ```
 
-`optionalFunction` and `optionalCallable` are preferred over the `null`-defaulting
+`optionalFunction` and `optionalSupplier` are preferred over the `null`-defaulting
 variants, which cannot distinguish "failed" from "legitimately returned null".
 
 Unlike the adapters, `OnError` catches unchecked exceptions too — handle-and-continue is

@@ -62,9 +62,9 @@ class OnErrorTest {
 	}
 
 	@Test
-	void optionalCallableYieldsEmptyOnFailure() {
+	void optionalSupplierYieldsEmptyOnFailure() {
 		final var supplier = OnError.of(e -> {
-		}).optionalCallable(OnErrorTest::throwingCallable);
+		}).optionalSupplier(OnErrorTest::throwingSupplier);
 
 		assertTrue(supplier.get().isEmpty());
 	}
@@ -138,7 +138,7 @@ class OnErrorTest {
 		throw CHECKED;
 	}
 
-	private static String throwingCallable() throws IOException {
+	private static String throwingSupplier() throws IOException {
 		throw CHECKED;
 	}
 
