@@ -15,13 +15,13 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests for {@link RWLock} and {@link Locks}.
+ * Tests for {@link ScopedLock} and {@link Locks}.
  */
-class RWLockTest {
+class ScopedLockTest {
 
 	private final ReentrantReadWriteLock delegate = new ReentrantReadWriteLock();
 
-	private final RWLock lock = Locks.wrap(delegate);
+	private final ScopedLock lock = Locks.wrap(delegate);
 
 	@Test
 	void closingTheHandleReleasesTheReadLock() {

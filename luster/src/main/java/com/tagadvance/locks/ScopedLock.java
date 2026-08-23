@@ -26,7 +26,7 @@ import java.util.concurrent.locks.StampedLock;
  * {@link ReadWriteLock}, so a wrapped {@link StampedLock} gives up that capability.
  */
 @FunctionalInterface
-public interface RWLock extends ReadWriteLock {
+public interface ScopedLock extends ReadWriteLock {
 
 	/**
 	 * @return the underlying {@link ReadWriteLock}
