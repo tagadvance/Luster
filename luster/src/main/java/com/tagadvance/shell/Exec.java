@@ -28,6 +28,7 @@ public final class Exec implements Closeable {
 
 	private static final Sleep sleep = Thread::sleep;
 
+	// TODO: make this injectable
 	private final ExecutorService service = Executors.newSingleThreadExecutor();
 
 	private final AtomicReference<Future<?>> future = new AtomicReference<>();
@@ -36,6 +37,7 @@ public final class Exec implements Closeable {
 
 	// use a separate list to avoid ConcurrentModificationException
 	// more efficient than CopyOnWriteArrayList due to removals
+	// TODO: remove Collections.synchronizedList
 	private final List<Resource> resourceQueue = Collections.synchronizedList(new ArrayList<>());
 
 	private final List<Resource> resources = Collections.synchronizedList(new ArrayList<>());
@@ -92,7 +94,7 @@ public final class Exec implements Closeable {
 
 	private void startFlush() {
 		while (isAlive.get()) {
-			if (flush() == 0 && isAlive.get()) {
+			if (flush() == 0) {
 				// busy-wait
 				if (!sleep.slept(1)) {
 					break;
