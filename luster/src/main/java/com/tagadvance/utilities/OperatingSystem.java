@@ -2,6 +2,7 @@ package com.tagadvance.utilities;
 
 import com.google.common.base.StandardSystemProperty;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -23,7 +24,7 @@ public enum OperatingSystem {
 
 	private static final String OS_NAME = Optional.of(StandardSystemProperty.OS_NAME)
 		.map(StandardSystemProperty::value)
-		.map(String::toLowerCase)
+		.map(name -> name.toLowerCase(Locale.ROOT))
 		.orElse("");
 
 	public static Optional<OperatingSystem> getOperatingSystem() {
@@ -87,9 +88,12 @@ public enum OperatingSystem {
 	 * @return {@link Boolean#TRUE true} if any of the supplied names match {@code osName}
 	 */
 	static boolean matchesOsName(final String osName, final String... names) {
-		final var lowerOsName = osName.toLowerCase();
+		// Locale.ROOT, because the default locale would lowercase "LINUX" to "lınux" under tr_TR
+		final var lowerOsName = osName.toLowerCase(Locale.ROOT);
 
-		return Arrays.stream(names).map(String::toLowerCase).anyMatch(lowerOsName::contains);
+		return Arrays.stream(names)
+			.map(name -> name.toLowerCase(Locale.ROOT))
+			.anyMatch(lowerOsName::contains);
 	}
 
 }
