@@ -4,7 +4,7 @@ import com.google.common.base.Throwables;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.tagadvance.exception.UncheckedExecutionException;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -19,8 +19,14 @@ import java.util.regex.Pattern;
  */
 public class Patterns {
 
-	@SuppressWarnings("all")
+	/**
+	 * Upper bound on the number of cached {@link Pattern patterns}, so compiling patterns from
+	 * untrusted input cannot grow the cache without limit.
+	 */
+	static final int MAXIMUM_CACHE_SIZE = 256;
+
 	private static final LoadingCache<PatternCacheKey, Pattern> patternCache = CacheBuilder.newBuilder()
+		.maximumSize(MAXIMUM_CACHE_SIZE)
 		.expireAfterAccess(1, TimeUnit.MINUTES)
 		.build(new CacheLoader<>() {
 			@Override
@@ -61,6 +67,16 @@ public class Patterns {
 
 			throw e;
 		}
+	}
+
+	/**
+	 * @return the approximate number of {@link Pattern patterns} currently cached, after
+	 * performing any pending maintenance
+	 */
+	static long estimatedCacheSize() {
+		patternCache.cleanUp();
+
+		return patternCache.size();
 	}
 
 	private Patterns() {
