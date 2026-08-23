@@ -19,13 +19,16 @@ public final class DebounceLogFactoryBuilder {
 
 	private Duration debounceDelay;
 
-	private int maxLogs;
+	private Duration debounceTimeout;
 
-	private LogFlusher flusher;
+	private Integer maxLogs;
+
+	private LogReducer reducer;
+
+	private LogFlusher flusher = new DefaultLogFlusher();
 
 	public DebounceLogFactoryBuilder() {
-		this.debounceDelay = Duration.ofSeconds(6);
-		this.maxLogs = DEFAULT_MAX_LOGS;
+
 	}
 
 	/**
@@ -40,12 +43,26 @@ public final class DebounceLogFactoryBuilder {
 	}
 
 	/**
+	 * The minimum time to wait to process a log entry. Later matching log entries will further push
+	 * back the time until the debounced log entries are processed.
+	 *
 	 * @param delay the {@link Duration debounce delay}
 	 * @return {@link DebounceLogFactoryBuilder this}
 	 */
 	public DebounceLogFactoryBuilder withDebounceDelay(final Duration delay) {
-		requireNonNull(delay, "delay must not be null");
-		this.debounceDelay = delay;
+		this.debounceDelay = requireNonNull(delay, "delay must not be null");
+
+		return this;
+	}
+
+	/**
+	 * The maximum time to wait to process a log entry.
+	 *
+	 * @param timeout the {@link Duration debounce timeout}
+	 * @return {@link DebounceLogFactoryBuilder this}
+	 */
+	public DebounceLogFactoryBuilder withDebounceTimeout(final Duration timeout) {
+		this.debounceTimeout = requireNonNull(timeout, "timeout must not be null");
 
 		return this;
 	}
@@ -57,6 +74,16 @@ public final class DebounceLogFactoryBuilder {
 	public DebounceLogFactoryBuilder withMaxLogs(final int maxLogs) {
 		checkArgument(maxLogs > 0, "maxLogs must be > 0");
 		this.maxLogs = maxLogs;
+
+		return this;
+	}
+
+	/**
+	 * @param reducer a {@link LogReducer reducer}
+	 * @return {@link DebounceLogFactoryBuilder this}
+	 */
+	public DebounceLogFactoryBuilder withLogReducer(final LogReducer reducer) {
+		this.reducer = requireNonNull(reducer, "reducer must not be null");
 
 		return this;
 	}
@@ -77,9 +104,15 @@ public final class DebounceLogFactoryBuilder {
 	 * @return a {@link DebounceLogFactory}
 	 */
 	public DebounceLogFactory build() {
-		return new DebounceLogFactory(
-			service == null ? Executors.newSingleThreadScheduledExecutor() : service, debounceDelay,
-			maxLogs, flusher);
+		final var service1 =
+			this.service == null ? Executors.newSingleThreadScheduledExecutor() : this.service;
+		final var delay = this.debounceDelay == null ? Duration.ofSeconds(6) : this.debounceDelay;
+		final var timeout = this.debounceTimeout == null ? Duration.ofMinutes(1) : this.debounceTimeout;
+		final var maxLogs = this.maxLogs == null ? DEFAULT_MAX_LOGS : this.maxLogs;
+		final var flusher = this.flusher == null ? new DefaultLogFlusher() : this.flusher;
+
+		return new DebounceLogFactory(service1, delay, timeout, maxLogs, reducer,
+			flusher);
 	}
 
 }

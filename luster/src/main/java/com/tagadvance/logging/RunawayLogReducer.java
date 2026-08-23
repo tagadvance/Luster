@@ -5,9 +5,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.Objects;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
+import java.util.stream.Stream;
+import org.slf4j.event.Level;
 
 /**
  * Let's say we have a job that copies data from a restful API for each tenant in our database.
@@ -20,45 +21,33 @@ import org.slf4j.Logger;
  * designed to alleviate that pain by detecting duplicate log messages and stack traces and
  * coalescing them into something useful. Please note that this reduction is lossy.
  */
-public class RunawayLogFlusher implements LogFlusher {
+public class RunawayLogReducer implements LogReducer {
 
-	public RunawayLogFlusher() {
+	public RunawayLogReducer() {
 
 	}
 
 	@Override
-	public void flush(final Collection<LogEntry> logEntries, final Logger logger,
-		final Consumer<LogEntry> remove) {
-		logEntries.stream()
+	public Stream<LogEntry> reduce(final Collection<LogEntry> logEntries) {
+		return logEntries.stream()
 			.sorted(Comparator.comparing(LogEntry::getInstant))
-			.collect(Collectors.groupingBy(LogEntry::getFormat))
-			.forEach((format, logs) -> flush(logs, logger, remove));
-	}
-
-	private void flush(final List<LogEntry> logs, final Logger logger,
-		final Consumer<LogEntry> remove) {
-		logs.stream()
-			.collect(Collectors.groupingBy(RunawayLogFlusher::hash))
-			.forEach((hash, logEntries) -> {
-				try {
-					if (logEntries.size() == 1) {
-						flushUnique(logEntries, logger);
-					} else if (hash == 0) {
-						flushMessages(logEntries, logger);
-					} else {
-						flushThrowables(logEntries, logger);
-					}
-				} finally {
-					logs.forEach(remove);
+			.collect(Collectors.groupingBy(RunawayLogReducer::hash))
+			.entrySet()
+			.stream()
+			.flatMap(e -> {
+				final var hash = e.getKey();
+				final var logs = e.getValue();
+				if (logs.size() == 1) {
+					return logs.stream();
+				} else if (hash == 0) {
+					return reduceMessages(logs);
+				} else {
+					return reduceThrowables(logs);
 				}
 			});
 	}
 
-	private void flushUnique(final List<LogEntry> logs, final Logger logger) {
-		logs.stream().findFirst().ifPresent(logEntry -> logEntry.log(logger));
-	}
-
-	private void flushMessages(final List<LogEntry> logs, final Logger logger) {
+	private Stream<LogEntry> reduceMessages(final List<LogEntry> logs) {
 		final var first = logs.stream()
 			.min(Comparator.comparing(LogEntry::getInstant))
 			.orElseThrow();
@@ -68,13 +57,14 @@ public class RunawayLogFlusher implements LogFlusher {
 		final var range = Duration.between(first.getInstant(), last.getInstant());
 
 		final var limit = 3;
-		// TODO: replace error with highest log level
-		logger.error("Encountered {} duplicate log messages over a time period of {}, e.g. {} ",
-			logs.size(), range,
-			logs.stream().limit(limit).map(LogEntry::toString).collect(Collectors.joining(", ")));
+//		logger.error("Encountered {} duplicate log messages over a time period of {}, e.g. {} ",
+//			logs.size(), range,
+//			logs.stream().limit(limit).map(LogEntry::toString).collect(Collectors.joining(", ")));
+		// FIXME
+		return Stream.empty();
 	}
 
-	private void flushThrowables(final List<LogEntry> logs, final Logger logger) {
+	private Stream<LogEntry> reduceThrowables(final List<LogEntry> logs) {
 		final var first = logs.stream()
 			.min(Comparator.comparing(LogEntry::getInstant))
 			.orElseThrow();
@@ -83,13 +73,15 @@ public class RunawayLogFlusher implements LogFlusher {
 			.orElseThrow();
 		final var range = Duration.between(first.getInstant(), last.getInstant());
 
-		logger.error(
-			"Encountered {} duplicate log messages over a time period of {}, e.g. \"{}\" {}",
-			logs.size(), range, first, first.getThrowable().map(Throwable::toString).orElseThrow());
+//		logger.error(
+//			"Encountered {} duplicate log messages over a time period of {}, e.g. \"{}\" {}",
+//			logs.size(), range, first, first.getThrowable().map(Throwable::toString).orElseThrow());
+		// FIXME
+		return Stream.empty();
 	}
 
 	private static int hash(final LogEntry logEntry) {
-		return logEntry.getThrowable().map(RunawayLogFlusher::hash).orElse(0);
+		return logEntry.getThrowable().map(RunawayLogReducer::hash).orElse(0);
 	}
 
 	private static int hash(final Throwable throwable) {

@@ -4,15 +4,13 @@ import static java.util.Objects.requireNonNull;
 
 import com.tagadvance.stack.StackTraces;
 import java.util.Collection;
-import java.util.Optional;
-import java.util.function.Consumer;
 import java.util.regex.Pattern;
-import org.slf4j.Logger;
+import java.util.stream.Stream;
 
 /**
  * This class prunes stack traces to remove entries outside the supplied namespace pattern.
  */
-public final class PruneStackTraceLogFlusher implements LogFlusher {
+public final class PruneStackTraceLogReducer implements LogReducer {
 
 	private final Pattern namespace;
 
@@ -20,18 +18,15 @@ public final class PruneStackTraceLogFlusher implements LogFlusher {
 	 * @param namespace a regular expression used to filter
 	 *                  {@link StackTraceElement stack trace elements}
 	 */
-	public PruneStackTraceLogFlusher(final Pattern namespace) {
+	public PruneStackTraceLogReducer(final Pattern namespace) {
 		this.namespace = requireNonNull(namespace, "namespace must not be null");
 	}
 
 	@Override
-	public void flush(final Collection<LogEntry> logEntries, final Logger logger,
-		final Consumer<LogEntry> remove) {
-		Optional.ofNullable(namespace)
-			.ifPresent(namespace -> logEntries.stream()
-				.map(LogEntry::getThrowable)
-				.flatMap(Optional::stream)
-				.forEach(throwable -> StackTraces.retain(throwable, namespace)));
+	public Stream<LogEntry> reduce(final Collection<LogEntry> logEntries) {
+		return logEntries.stream()
+			.peek(e -> e.getThrowable()
+				.ifPresent(throwable -> StackTraces.retain(throwable, namespace)));
 	}
 
 }

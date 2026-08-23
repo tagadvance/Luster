@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 
 /**
- * Unit tests for {@link RunawayLogFlusher}.
+ * Unit tests for {@link DefaultLogFlusher}.
  */
 class DefaultLogFlusherTest {
 
@@ -17,7 +17,7 @@ class DefaultLogFlusherTest {
 			.mapToObj(i -> newLogEntry())
 			.collect(Collectors.toList());
 		final var logger = LoggerFactory.getLogger(DefaultLogFlusherTest.class);
-		new RunawayLogFlusher().flush(logEntries, logger);
+		new DefaultLogFlusher().flush(logEntries, logger);
 	}
 
 	private static LogEntry newLogEntry() {

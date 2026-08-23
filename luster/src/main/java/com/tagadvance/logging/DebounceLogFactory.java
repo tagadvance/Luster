@@ -4,36 +4,47 @@ import com.tagadvance.proxy.Invocation;
 import com.tagadvance.proxy.InvocationInterceptor;
 import com.tagadvance.proxy.InvocationProxy;
 import java.time.Duration;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 
 public class DebounceLogFactory implements ILoggerFactory {
 
-	final Set<LogEntry> logQueue = Collections.synchronizedSet(new LinkedHashSet<>());
+	private final Lock lock = new ReentrantLock();
 
-	private final AtomicReference<ScheduledFuture<?>> future = new AtomicReference<>();
+	final Map<DebounceKey, DebounceLog> logs = new HashMap<>();
 
 	private final ScheduledExecutorService service;
 
 	private final Duration debounceDelay;
 
+	private final Duration debounceTimeout;
+
 	private final int maxLogs;
+
+	private final LogReducer reducer;
 
 	private final LogFlusher flusher;
 
-	protected DebounceLogFactory(final ScheduledExecutorService service,
-		final Duration debounceDelay, final int maxLogs, final LogFlusher flusher) {
+	DebounceLogFactory(final ScheduledExecutorService service, final Duration debounceDelay,
+		final Duration debounceTimeout, final int maxLogs, final LogReducer reducer,
+		final LogFlusher flusher) {
 		this.service = service;
 		this.debounceDelay = debounceDelay;
+		this.debounceTimeout = debounceTimeout;
 		this.maxLogs = maxLogs;
+		this.reducer = reducer;
 		this.flusher = flusher;
 	}
 
@@ -44,7 +55,11 @@ public class DebounceLogFactory implements ILoggerFactory {
 		return InvocationProxy.createProxy(Logger.class, logger, new LogInterceptor(logger));
 	}
 
-	final class LogInterceptor implements InvocationInterceptor {
+	private int size() {
+		return logs.values().stream().mapToInt(DebounceLog::size).sum();
+	}
+
+	private class LogInterceptor implements InvocationInterceptor {
 
 		private final Logger logger;
 
@@ -56,27 +71,100 @@ public class DebounceLogFactory implements ILoggerFactory {
 		public Object onInvocation(final Invocation invocation) throws Throwable {
 			final var logEntry = LogEntry.fromInvocation(invocation);
 			if (logEntry.isPresent()) {
-				logQueue.add(logEntry.get());
-				debounce();
+				final var e = logEntry.get();
+				// ignore log entries that were formatted externally
+				if (e.getFormat().contains("{}")) {
+					intercept(e);
 
-				return null;
+					return null;
+				}
 			}
 
 			return invocation.invoke();
 		}
 
-		private void debounce() {
-			future.updateAndGet(f -> {
-				if (f != null) {
-					f.cancel(false);
+		private void intercept(final LogEntry e) {
+			service.execute(lock(() -> {
+				var key = new DebounceKey(e.getLevel(), e.getFormat());
+				final var debounceLog = logs.computeIfAbsent(key, debounceKey -> new DebounceLog());
+				debounceLog.add(e);
+				final Runnable onComplete = lock(() -> {
+					final var reduction = reducer.reduce(debounceLog.entries).toList();
+					flusher.flush(reduction, logger);
+					logs.remove(key);
+				});
+				debounceLog.debounce(onComplete);
+				debounceLog.timeout(onComplete);
+			}));
+		}
+
+		private Runnable lock(final Runnable runnable) {
+			return () -> {
+				lock.lock();
+				try {
+					runnable.run();
+				} finally {
+					lock.unlock();
 				}
+			};
+		}
 
-				// process logs immediately if queue size exceeds maximum
-				final var localDelay = logQueue.size() >= maxLogs ? 0 : debounceDelay.toNanos();
+	}
 
-				return service.schedule(() -> flusher.flush(logQueue, logger), localDelay,
-					TimeUnit.NANOSECONDS);
-			});
+	private record DebounceKey(Level level, String format) {
+
+		@Override
+		public boolean equals(final Object o) {
+			return o instanceof final DebounceKey that && Objects.equals(level, that.level)
+				&& Objects.equals(format, that.format);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(level, format);
+		}
+
+	}
+
+	private class DebounceLog {
+
+		private ScheduledFuture<?> debounceFuture;
+
+		private ScheduledFuture<?> timeoutFuture;
+
+		private final List<LogEntry> entries = new ArrayList<>();
+
+		private void add(final LogEntry entry) {
+			entries.add(entry);
+		}
+
+		private void debounce(final Runnable runnable) {
+			if (debounceFuture != null) {
+				debounceFuture.cancel(false);
+			}
+
+			// process logs immediately if queue size exceeds maximum
+			final var localDelay =
+				DebounceLogFactory.this.size() >= maxLogs ? 0 : debounceDelay.toNanos();
+
+			debounceFuture = service.schedule(runnable, localDelay, TimeUnit.NANOSECONDS);
+		}
+
+		private void timeout(final Runnable runnable) {
+			if (timeoutFuture != null && !timeoutFuture.isDone()) {
+				return;
+			}
+
+			if (debounceFuture != null) {
+				debounceFuture.cancel(false);
+			}
+
+			timeoutFuture = service.schedule(runnable, debounceTimeout.toNanos(),
+				TimeUnit.NANOSECONDS);
+		}
+
+		private int size() {
+			return entries.size();
 		}
 
 	}

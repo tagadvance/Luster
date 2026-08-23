@@ -3,6 +3,10 @@ package com.tagadvance.logging;
 import org.slf4j.Logger;
 import org.slf4j.Marker;
 
+/**
+ * A {@link Logger logger} adapter. This is useful for implementing a custom {@link Logger logger}
+ * without having to implement all of its many methods.
+ */
 public interface LoggerAdapter extends Logger {
 
 	@Override
