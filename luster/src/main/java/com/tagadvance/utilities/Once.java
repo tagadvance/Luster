@@ -2,6 +2,7 @@ package com.tagadvance.utilities;
 
 import static java.util.Objects.requireNonNull;
 
+import com.google.common.base.Suppliers;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -13,6 +14,13 @@ import java.util.function.Supplier;
  */
 public final class Once {
 
+	/**
+	 *
+	 * @param supplier
+	 * @return
+	 * @param <T>
+	 * @deprecated Use {@link Suppliers#memoize(com.google.common.base.Supplier)} instead.
+	 */
 	@SuppressWarnings("all")
 	public static <T> Supplier<T> supplier(final Supplier<T> supplier) {
 		requireNonNull(supplier, "supplier must not be null");
