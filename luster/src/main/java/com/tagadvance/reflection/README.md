@@ -62,7 +62,7 @@ final var declaredMethodCount = M.getSuperclasses(getClass())
 final var compareTo = Stream.of(getClass())
 	.flatMap(M::getMethods)
 	.filter(M.withEquals(Method::getName, "compareTo"))
-	.filter(M.isBridge().negate())
+	.filter(Predicate.not(M::isBridge))
 	.findFirst();
 ```
 
@@ -89,6 +89,6 @@ neither "declared" nor "all":
 
 * a non-public member inherited from a superclass is invisible; use `getAllFields` or
   `getAllMethods` to walk the hierarchy;
-* bridge and synthetic methods come through; filter them with `isBridge()` or `isSynthetic()`;
+* bridge and synthetic methods come through; filter them with `M::isBridge` or `M::isSynthetic`;
 * `distinct()` leans on `Method#equals`, which includes the declaring class, so an overridden
   method appears once per class in the hierarchy that declares it.

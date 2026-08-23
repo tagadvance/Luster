@@ -12,6 +12,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
@@ -80,13 +81,13 @@ class MirrorHierarchyTest {
 
 		assertEquals(2, compareTo.size());
 
-		final var bridges = compareTo.stream().filter(M.isBridge()).toList();
+		final var bridges = compareTo.stream().filter(M::isBridge).toList();
 
 		assertEquals(1, bridges.size());
 		assertEquals(Object.class, bridges.get(0).getParameterTypes()[0]);
-		assertTrue(M.isSynthetic().test(bridges.get(0)));
+		assertTrue(M.isSynthetic(bridges.get(0)));
 
-		final var declared = compareTo.stream().filter(M.isBridge().negate()).toList();
+		final var declared = compareTo.stream().filter(Predicate.not(M::isBridge)).toList();
 
 		assertEquals(1, declared.size());
 		assertEquals(Sortable.class, declared.get(0).getParameterTypes()[0]);
