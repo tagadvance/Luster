@@ -1,55 +1,94 @@
-# Example
+# `com.tagadvance.exception`
 
-Are you tired of writing code like this?
+Two families of functional interface, for two different jobs.
+
+## Adapters — get a throwing lambda past the JDK
+
+`CheckedFunction`, `CheckedConsumer`, `CheckedPredicate`, `CheckedRunnable`,
+`CheckedComparator` extend the JDK type so they can be handed to it. Are you tired of
+writing code like this?
 
 ```java
-void foo() throws Exception {
+void foo() throws IOException {
 	try {
-		Stream.empty().map(i -> {
+		Stream.of(paths).map(path -> {
 			try {
-				throw new Exception();
-			} catch (final Exception e) {
+				return Files.readString(path);
+			} catch (final IOException e) {
 				throw new RuntimeException(e);
 			}
 		}).forEach(System.err::println);
 	} catch (final RuntimeException e) {
 		final var cause = e.getCause();
-		if (cause instanceof Exception) {
-			throw (Exception) cause;
+		if (cause instanceof IOException io) {
+			throw io;
 		}
-	
+
 		throw e;
 	}
 }
 ```
 
-instead of code like this:
+instead of code like this?
 
 ```java
-void foo() throws Exception {
-	Stream.empty()
-		.map(CheckedFunction.of(this::throwsException))
-		.forEach(System.err::println);
-}
-
-Object throwsException(final Object o) throws Exception {
-	throw new Exception();
+void foo() throws IOException {
+	Checked.rethrowing(IOException.class, () -> Stream.of(paths)
+		.map(CheckedFunction.of(Files::readString))
+		.forEach(System.err::println));
 }
 ```
 
-or this?
+The adapters rethrow checked exceptions as `UncheckedException`, because the JDK signature
+forbids anything else. `Checked.rethrowing` is the other half: it puts the original
+exception back on the wire at exactly one place, where the compiler can enforce the
+`throws` clause again. Without it the boilerplate has only moved to your caller.
+
+Unchecked exceptions are **not** wrapped — an `IllegalArgumentException` thrown inside the
+lambda comes out as itself, so existing `catch` blocks keep firing.
+
+One exception type per `rethrowing` call; nest them if you need two. `throws E` cannot be
+expressed over a varargs of type tokens.
+
+## Throwing types — declare an honest `throws` in your own API
+
+`ThrowingRunnable`, `ThrowingConsumer`, `ThrowingFunction`, `ThrowingPredicate`,
+`ThrowingComparator`, `ThrowingSupplier`, `ThrowingCallable` extend nothing and propagate
+`E` to the caller. Use them as parameter types where you want `E` visible:
 
 ```java
-void foo() throws Exception {
-	final var logger = LoggerFactory.getLogger(getClass());
-	final var deferredException = new DeferredException(e -> logger.error(e.getMessage()));
-	Stream.empty()
-		.map(deferredException.function(this::throwsException))
-		.filter(Objects::nonNull)
-		.forEach(System.err::println);
-}
-
-Object throwsException(final Object o) throws Exception {
-	throw new Exception();
+default <V, E extends Exception> V readLock(ThrowingCallable<V, E> callable) throws E {
+	...
 }
 ```
+
+Each adapter extends its throwing counterpart, so anything accepting a throwing type also
+accepts the matching adapter.
+
+## `OnError` — handle each failure and keep going
+
+```java
+final var onError = OnError.of(logger::error);
+Stream.of(paths)
+	.map(onError.optionalFunction(Files::readString))
+	.flatMap(Optional::stream)
+	.forEach(System.err::println);
+```
+
+`optionalFunction` and `optionalCallable` are preferred over the `null`-defaulting
+variants, which cannot distinguish "failed" from "legitimately returned null".
+
+Unlike the adapters, `OnError` catches unchecked exceptions too — handle-and-continue is
+the whole point of the type.
+
+## `ExceptionCollector` — collect everything, throw once
+
+```java
+try (final var collector = ExceptionCollector.create()) {
+	tenants.forEach(collector.consumer(this::sync));
+} // throws if any tenant failed, first as the cause, rest suppressed
+```
+
+`close()` throws `UncheckedException` so that try-with-resources does not force every
+caller to catch `Exception`; wrap the block in `Checked.rethrowing` to get the original
+type back.
