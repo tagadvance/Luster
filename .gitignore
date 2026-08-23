@@ -1,5 +1,12 @@
+# $HOME/.gitignore is this repo's core.excludesfile and denies everything by default.
+# Re-include the tree here so new files are visible to git again.
+!*
+
 # Ignore Gradle project-specific cache directory
 .gradle
 
 # Ignore Gradle build output directory
 build
+
+.idea/
+/tmp/
