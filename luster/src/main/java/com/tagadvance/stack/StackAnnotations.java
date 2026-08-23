@@ -56,7 +56,8 @@ public final class StackAnnotations {
 		final var packages = new LinkedHashSet<Package>();
 		final var methodsAndClasses = accessors.stream().flatMap(accessor -> {
 			final var c = accessor.getElementClass();
-			packages.add(c.getPackage());
+			// a class in the unnamed package has no Package
+			Optional.ofNullable(c.getPackage()).ifPresent(packages::add);
 
 			return Stream.concat(accessor.findElementMethod().stream(), Stream.of(c))
 				.flatMap(M::getAnnotations);
