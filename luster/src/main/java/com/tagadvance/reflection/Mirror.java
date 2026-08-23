@@ -13,6 +13,7 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.RecordComponent;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.Arrays;
@@ -23,8 +24,29 @@ import java.util.stream.Stream;
 
 /**
  * {@link Mirror} is a utility to simply reflection through the use of {@link Stream streams}.
+ *
+ * <p>This class is deliberately not {@literal final}: {@link M} extends it to provide a short
+ * alias. Do not "fix" it.
  */
 public class Mirror {
+
+	/**
+	 * Returns a memoized view of this utility. Lookups like {@link Class#getDeclaredMethods()}
+	 * clone their backing array on every call, so a {@link Stream stream} built over a hot class
+	 * allocates on every pass; the returned view computes each lookup once per {@link Class} and
+	 * replays it.
+	 *
+	 * <p>Memoization is opt-in rather than transparent because the cache is never invalidated. A
+	 * class redefined at runtime - by an instrumentation agent, or by a hot-reloading container -
+	 * keeps serving the members it had when it was first seen. Callers that must observe such a
+	 * change have to use the uncached methods.
+	 *
+	 * @return a shared, memoized view of this utility
+	 * @see CachedMirror
+	 */
+	public static CachedMirror cached() {
+		return CachedMirror.INSTANCE;
+	}
 
 	/**
 	 * Note that {@link AccessibleObject#canAccess(Object)} throws
@@ -192,7 +214,18 @@ public class Mirror {
 		return Stream.of(genericExceptionTypes);
 	}
 
-	// TODO getParameterAnnotations
+	/**
+	 * @param executable an instance of {@link Executable}
+	 * @return a {@link Stream stream} of the {@link Annotation annotations} declared on the
+	 * {@link Executable executable's} parameters, flattened into a single {@link Stream stream} in
+	 * parameter order
+	 * @see Executable#getParameterAnnotations()
+	 */
+	public static Stream<Annotation> getParameterAnnotations(final Executable executable) {
+		final var parameterAnnotations = executable.getParameterAnnotations();
+
+		return Arrays.stream(parameterAnnotations).flatMap(Arrays::stream);
+	}
 
 	/**
 	 * @param executable an instance of {@link Executable}
@@ -217,6 +250,9 @@ public class Mirror {
 	}
 
 	/**
+	 * Constructors are not inherited, so this is the union of two overlapping sets: every
+	 * constructor declared by {@literal c}, and the {@literal public} subset of the same.
+	 *
 	 * @param c   an instance of {@link Class}
 	 * @param <T> the type of the {@link Class}
 	 * @return a {@link Stream stream} of all available {@link Constructor constructors}
@@ -232,6 +268,14 @@ public class Mirror {
 	}
 
 	/**
+	 * This is the union of the fields <em>declared</em> by {@literal c} and the
+	 * {@literal public} fields of its whole hierarchy, which is neither "declared" nor "all": a
+	 * non-public field inherited from a superclass is invisible. Use
+	 * {@link #getAllFields(Class)} to walk the hierarchy instead.
+	 *
+	 * <p>{@link Stream#distinct()} leans on {@link Field#equals(Object)}, which includes the
+	 * declaring class, so a field that shadows an inherited one appears once per declaring class.
+	 *
 	 * @param c an instance of {@link Class}
 	 * @return a {@link Stream stream} of all available {@link Field fields}
 	 * @see Class#getDeclaredFields()
@@ -275,6 +319,20 @@ public class Mirror {
 	}
 
 	/**
+	 * This is the union of the methods <em>declared</em> by {@literal c} and the
+	 * {@literal public} methods of its whole hierarchy, which is neither "declared" nor "all": a
+	 * non-public method inherited from a superclass is invisible. Use
+	 * {@link #getAllMethods(Class)} to walk the hierarchy instead.
+	 *
+	 * <p>Bridge and synthetic methods come through. Every generic override produces a bridge
+	 * method, so a {@link Stream stream} over a concrete {@link Comparable} implementation yields
+	 * two {@literal compareTo} entries with different parameter types. Filter them with
+	 * {@link #isBridge()} or {@link #isSynthetic()}.
+	 *
+	 * <p>{@link Stream#distinct()} leans on {@link Method#equals(Object)}, which includes the
+	 * declaring class, so an overridden method appears once per class in the hierarchy that
+	 * declares it.
+	 *
 	 * @param c an instance of {@link Class}
 	 * @return a {@link Stream stream} of all available {@link Method methods}
 	 * @see Class#getDeclaredMethods()
@@ -322,6 +380,10 @@ public class Mirror {
 	}
 
 	/**
+	 * This is the union of the member classes <em>declared</em> by {@literal c} and the
+	 * {@literal public} member classes of its whole hierarchy: a non-public member class
+	 * inherited from a superclass is invisible.
+	 *
 	 * @param c an instance of {@link Class}
 	 * @return a {@link Stream stream} of all available {@link Class classes}
 	 * @see Class#getDeclaredClasses()
@@ -332,6 +394,81 @@ public class Mirror {
 		final var classes = c.getClasses();
 
 		return Stream.of(declaredClasses, classes).flatMap(Arrays::stream).distinct();
+	}
+
+	/**
+	 * @param c an instance of {@link Class}
+	 * @return a {@link Stream stream} of {@literal c} followed by each of its superclasses,
+	 * ending with {@link Object}; an interface, a primitive and {@link Object} itself each yield a
+	 * single element
+	 * @see Class#getSuperclass()
+	 */
+	public static Stream<Class<?>> getSuperclasses(final Class<?> c) {
+		return Stream.iterate(c, Objects::nonNull, Class::getSuperclass);
+	}
+
+	/**
+	 * @param c an instance of {@link Class}
+	 * @return a {@link Stream stream} of every interface implemented by {@literal c} or by one of
+	 * its superclasses, transitively
+	 * @see Class#getInterfaces()
+	 * @see #getSuperclasses(Class)
+	 */
+	public static Stream<Class<?>> getInterfaces(final Class<?> c) {
+		return getSuperclasses(c).map(Class::getInterfaces)
+			.flatMap(Arrays::stream)
+			.flatMap(i -> Stream.concat(Stream.of(i), getInterfaces(i)))
+			.distinct();
+	}
+
+	/**
+	 * Unlike {@link #getFields(Class)} this walks the whole hierarchy, so a non-public inherited
+	 * field is visible. A field that shadows an inherited one appears once per declaring class.
+	 *
+	 * @param c an instance of {@link Class}
+	 * @return a {@link Stream stream} of every {@link Field field} declared by {@literal c}, by
+	 * one of its superclasses, or by one of its interfaces, whatever its visibility
+	 * @see Class#getDeclaredFields()
+	 * @see #getSuperclasses(Class)
+	 * @see #getInterfaces(Class)
+	 */
+	public static Stream<Field> getAllFields(final Class<?> c) {
+		return Stream.concat(getSuperclasses(c), getInterfaces(c))
+			.map(Class::getDeclaredFields)
+			.flatMap(Arrays::stream)
+			.distinct();
+	}
+
+	/**
+	 * Unlike {@link #getMethods(Class)} this walks the whole hierarchy, so a non-public inherited
+	 * method is visible. An overridden method appears once per class in the hierarchy that
+	 * declares it.
+	 *
+	 * @param c an instance of {@link Class}
+	 * @return a {@link Stream stream} of every {@link Method method} declared by {@literal c}, by
+	 * one of its superclasses, or by one of its interfaces, whatever its visibility
+	 * @see Class#getDeclaredMethods()
+	 * @see #getSuperclasses(Class)
+	 * @see #getInterfaces(Class)
+	 */
+	public static Stream<Method> getAllMethods(final Class<?> c) {
+		return Stream.concat(getSuperclasses(c), getInterfaces(c))
+			.map(Class::getDeclaredMethods)
+			.flatMap(Arrays::stream)
+			.distinct();
+	}
+
+	/**
+	 * @param c an instance of {@link Class}
+	 * @return a {@link Stream stream} of the {@link RecordComponent record components} of
+	 * {@literal c} in declaration order, or an empty {@link Stream stream} if {@literal c} is not
+	 * a record
+	 * @see Class#getRecordComponents()
+	 */
+	public static Stream<RecordComponent> getRecordComponents(final Class<?> c) {
+		final var recordComponents = c.getRecordComponents();
+
+		return recordComponents == null ? Stream.empty() : Arrays.stream(recordComponents);
 	}
 
 	/**
@@ -519,6 +656,25 @@ public class Mirror {
 		final var modifiers = member.getModifiers();
 
 		return Modifier.isAbstract(modifiers);
+	}
+
+	/**
+	 * @return a {@link Predicate filter} that retains bridge {@link Method methods}, i.e. the
+	 * synthetic overloads the compiler generates so that a generic override is reachable through
+	 * its erased signature
+	 * @see Method#isBridge()
+	 */
+	public static Predicate<Member> isBridge() {
+		return member -> member instanceof Method method && method.isBridge();
+	}
+
+	/**
+	 * @return a {@link Predicate filter} that retains synthetic {@link Member members}, i.e. those
+	 * introduced by the compiler rather than declared in source
+	 * @see Member#isSynthetic()
+	 */
+	public static Predicate<Member> isSynthetic() {
+		return Member::isSynthetic;
 	}
 
 	/**
