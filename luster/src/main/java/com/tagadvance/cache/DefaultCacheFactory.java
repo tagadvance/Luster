@@ -7,7 +7,7 @@ import com.tagadvance.proxy.InvocationInterceptor;
 import com.tagadvance.proxy.InvocationProxy;
 import com.tagadvance.reflection.M;
 import com.tagadvance.reflection.ReflectionException;
-import com.tagadvance.utilities.Benchmark;
+import com.tagadvance.utilities.Timed;
 import com.tagadvance.utilities.Once;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -266,7 +266,7 @@ public final class DefaultCacheFactory implements CacheFactory {
 
 			return cacheConfiguration.recordStats() ? () -> {
 				try {
-					return Benchmark.profile(supplier,
+					return Timed.profile(supplier::get,
 						duration -> recordStats(stats -> stats.loadSuccess(duration)));
 				} catch (final RuntimeException e) {
 					recordStats(CacheStatistics::loadException);
