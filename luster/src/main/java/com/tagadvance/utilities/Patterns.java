@@ -19,8 +19,14 @@ import java.util.regex.Pattern;
  */
 public class Patterns {
 
-	@SuppressWarnings("all")
+	/**
+	 * Upper bound on the number of cached {@link Pattern patterns}, so compiling patterns from
+	 * untrusted input cannot grow the cache without limit.
+	 */
+	static final int MAXIMUM_CACHE_SIZE = 256;
+
 	private static final LoadingCache<PatternCacheKey, Pattern> patternCache = CacheBuilder.newBuilder()
+		.maximumSize(MAXIMUM_CACHE_SIZE)
 		.expireAfterAccess(1, TimeUnit.MINUTES)
 		.build(new CacheLoader<>() {
 			@Override
@@ -61,6 +67,16 @@ public class Patterns {
 
 			throw e;
 		}
+	}
+
+	/**
+	 * @return the approximate number of {@link Pattern patterns} currently cached, after
+	 * performing any pending maintenance
+	 */
+	static long estimatedCacheSize() {
+		patternCache.cleanUp();
+
+		return patternCache.size();
 	}
 
 	private Patterns() {
