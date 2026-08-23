@@ -31,7 +31,7 @@ public final class PruneStackTraceLogFlusher implements LogFlusher {
 			.ifPresent(namespace -> logEntries.stream()
 				.map(LogEntry::getThrowable)
 				.flatMap(Optional::stream)
-				.forEach(throwable -> StackTraces.retain(throwable, namespace)));
+				.forEach(throwable -> StackTraces.pruneInPlace(throwable, namespace)));
 	}
 
 }
