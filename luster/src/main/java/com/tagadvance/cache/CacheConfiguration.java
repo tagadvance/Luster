@@ -6,85 +6,65 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
 
 /**
- * The cache configuration.
+ * Declares that a method's result should be cached.
+ * <p>
+ * Durations are ISO-8601 strings as parsed by {@link Duration#parse(CharSequence)}, e.g.
+ * {@code "PT5M"} for five minutes. An empty string leaves that feature disabled. Values are
+ * parsed and validated when the proxy is created, so a malformed duration fails fast rather than
+ * at first use.
  */
 @Documented
 @Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface CacheConfiguration {
 
-	long DISABLED = -1L;
-
+	/**
+	 * @return this cache's name, which must be unique within the proxied interface
+	 */
 	String name();
 
 	/**
-	 * See Also: {@link CacheBuilder#expireAfterAccess(long, TimeUnit)}
+	 * @return an ISO-8601 duration, or {@literal ""} to disable
+	 * @see CacheBuilder#expireAfterAccess(Duration)
 	 */
-	long expireAfterAccessDelay() default DISABLED;
+	String expireAfterAccess() default "";
 
 	/**
-	 * See Also: {@link CacheBuilder#expireAfterAccess(long, TimeUnit)}
+	 * @return an ISO-8601 duration, or {@literal ""} to disable
+	 * @see CacheBuilder#expireAfterWrite(Duration)
 	 */
-	TimeUnit expireAfterAccessTimeUnit() default TimeUnit.MILLISECONDS;
+	String expireAfterWrite() default "";
 
 	/**
-	 * See Also: {@link CacheBuilder#expireAfterWrite(long, TimeUnit)}
+	 * @return an ISO-8601 duration, or {@literal ""} to disable
+	 * @see CacheBuilder#refreshAfterWrite(Duration)
 	 */
-	long expireAfterWriteDelay() default DISABLED;
+	String refreshAfterWrite() default "";
 
 	/**
-	 * See Also: {@link CacheBuilder#expireAfterWrite(long, TimeUnit)}
-	 */
-	TimeUnit expireAfterWriteTimeUnit() default TimeUnit.MILLISECONDS;
-
-//	/**
-//	 * The name of the method to use to calculate the expiration from the result. Must accept one
-//	 * argument and return a {@link java.time.Duration} or {@link Long millis}.
-//	 * <p>
-//	 * .e.g. <code>"com.domain.Class#methodName"</code> or simply <code>"methodName"</code> if it
-//	 * belongs to the same interface.
-//	 *
-//	 * @return the name of the method to use to calculate the expiration from the result
-//	 */
-//	String expireAfterWriteHook() default "";
-
-	/**
-	 * See Also: {@link CacheBuilder#initialCapacity(int)}
+	 * @return the initial capacity
+	 * @see CacheBuilder#initialCapacity(int)
 	 */
 	int initialCapacity() default 1;
 
 	/**
-	 * See Also: {@link CacheBuilder#maximumSize(long)}
+	 * @return the maximum number of entries, or a negative value for unbounded
+	 * @see CacheBuilder#maximumSize(long)
 	 */
-	int maximumSize() default Integer.MAX_VALUE;
+	long maximumSize() default -1L;
 
 	/**
-	 * The name of a class that implements {@link EvictionStrategy}.
-	 *
-	 * @return the name of the method to use to calculate the expiration from the result
-	 */
-	Class<? extends EvictionStrategy> evictionStrategy() default DefaultEvictionStrategy.class;
-
-	/**
-	 * See Also: {@link CacheBuilder#refreshAfterWrite(long, TimeUnit)}
+	 * @return {@literal true} to accumulate {@link CacheStatistics statistics}
+	 * @see CacheBuilder#recordStats()
 	 */
 	boolean recordStats() default false;
 
 	/**
-	 * See Also: {@link CacheBuilder#refreshAfterWrite(long, TimeUnit)}
-	 */
-	long refreshAfterWriteDelay() default DISABLED;
-
-	/**
-	 * See Also: {@link CacheBuilder#refreshAfterWrite(long, TimeUnit)}
-	 */
-	TimeUnit refreshAfterWriteTimeUnit() default TimeUnit.MILLISECONDS;
-
-	/**
-	 * See Also: {@link CacheBuilder#softValues()}
+	 * @return {@literal true} to hold values by {@link java.lang.ref.SoftReference}
+	 * @see CacheBuilder#softValues()
 	 */
 	boolean softValues() default false;
 

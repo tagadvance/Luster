@@ -3,38 +3,33 @@ package com.tagadvance.exception;
 import java.util.Comparator;
 
 /**
- * A {@link Comparator} that throws an exception of type {@link E}.
+ * A {@link Comparator} that erases the checked-ness of {@link E} so the comparator can be handed
+ * to the JDK, e.g. {@link java.util.stream.Stream#sorted(Comparator)}.
+ * <p>
+ * Checked exceptions are rethrown as {@link UncheckedException}; unchecked exceptions propagate
+ * unchanged.
  *
  * @param <I> the type of objects that may be compared by this comparator
  * @param <E> the type of exception that may be thrown by this comparator
  */
 @FunctionalInterface
-public interface CheckedComparator<I, E extends Exception> extends Comparator<I> {
-
-	/**
-	 * This method is like {@link Comparator#compare(Object, Object)} except that it may throw an
-	 * exception of type {@link E}.
-	 *
-	 * @param o1 the first object to be compared
-	 * @param o2 the second object to be compared
-	 * @return a negative integer, zero, or a positive integer as the first argument is less than,
-	 * equal to, or greater than the second
-	 * @throws E the type of exception
-	 */
-	int compareChecked(I o1, I o2) throws E;
+public interface CheckedComparator<I, E extends Exception> extends Comparator<I>,
+	ThrowingComparator<I, E> {
 
 	@Override
-	default int compare(final I o1, I o2) throws UncheckedExecutionException {
+	default int compare(final I o1, final I o2) throws UncheckedException {
 		try {
 			return compareChecked(o1, o2);
+		} catch (final RuntimeException e) {
+			throw e;
 		} catch (final Exception e) {
-			throw new UncheckedExecutionException(e);
+			throw new UncheckedException(e);
 		}
 	}
 
 	/**
 	 * This method wraps the supplied {@link CheckedComparator} in a {@link Comparator} that
-	 * automatically re-throws checked exceptions as {@link UncheckedExecutionException}.
+	 * automatically re-throws checked exceptions as {@link UncheckedException}.
 	 *
 	 * @param comparator a {@link CheckedComparator}
 	 * @param <I>        the type of objects that may be compared

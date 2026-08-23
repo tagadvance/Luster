@@ -3,17 +3,20 @@ package com.tagadvance.mockingbird;
 import com.tagadvance.proxy.Invocation;
 
 /**
- * Generates a {@link String name} from an {@link Invocation invocation}. The method used to
- * generate the name must be deterministic! The name must be a valid file name. It is left to the
- * implementor to ensure that the file name is compatible with the underlying filesystem.
+ * Generates a file name for an {@link Invocation invocation}.
+ * <p>
+ * The name must be a valid file name, and it must be <strong>deterministic across JVM runs</strong>
+ * — anything derived from an identity hash will produce a different name every time the program
+ * starts, so recordings will never be found again. The name is resolved inside a directory named
+ * for the interface, so it does not need to identify the interface itself.
  */
 public interface InvocationNameGenerator {
 
 	/**
 	 * @param iface      the interface type
 	 * @param invocation an {@link Invocation invocation}
-	 * @return a {@link String name} for the supplied {@link Invocation invocation}
+	 * @return a file name for the supplied {@link Invocation invocation}
 	 */
-	String toName(final Class<?> iface, final Invocation invocation);
+	String toName(Class<?> iface, Invocation invocation);
 
 }

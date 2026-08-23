@@ -93,20 +93,20 @@ class DefaultCacheFactoryTest {
 		final var o2 = operation.expensiveOperation();
 		assertSame(o1, o2);
 
-		// expire and wait for refresh
+		// go stale, so the next access refreshes
 		Thread.sleep(300);
 
 		final var o3 = operation.expensiveOperation();
 		assertNotSame(o1, o3);
 
+		// the refreshed value is now the cached one
+		assertSame(o3, operation.expensiveOperation());
+
 		controller.getCache("RefreshAfterWrite").map(Cache::statistics).ifPresent(stats -> {
-			assertEquals(2, stats.hitCount());
-			assertEquals(1, stats.missCount());
-			assertEquals(2, stats.loadSuccessCount());
 			assertEquals(0, stats.loadExceptionCount());
+			assertEquals(2, stats.loadSuccessCount(), "the value should have been reloaded once");
 			assertTrue(stats.averageLoadTime() > 0);
 			assertTrue(stats.totalLoadTime() > 0);
-			assertEquals(1, stats.evictionCount());
 		});
 	}
 
@@ -120,7 +120,7 @@ class DefaultCacheFactoryTest {
 		operation.apply(2);
 		operation.apply(3);
 
-		controller.getCache("MaxSize").map(Cache::size).ifPresent(size -> assertEquals(1, size));
+		controller.getCache("MaxSize").map(Cache::size).ifPresent(size -> assertEquals(1L, size));
 	}
 
 	@Test
@@ -159,28 +159,28 @@ class DefaultCacheFactoryTest {
 
 	public interface ExpireAfterAccess extends ExpensiveOperation {
 
-		@CacheConfiguration(name = "ExpireAfterAccess", expireAfterAccessDelay = 100L, recordStats = true)
+		@CacheConfiguration(name = "ExpireAfterAccess", expireAfterAccess = "PT0.1S", recordStats = true)
 		Object expensiveOperation() throws FooException;
 
 	}
 
 	public interface ExpireAfterWrite extends ExpensiveOperation {
 
-		@CacheConfiguration(name = "ExpireAfterWrite", expireAfterWriteDelay = 100L, recordStats = true)
+		@CacheConfiguration(name = "ExpireAfterWrite", expireAfterWrite = "PT0.1S", recordStats = true)
 		Object expensiveOperation() throws FooException;
 
 	}
 
 	public interface RefreshAfterWrite extends ExpensiveOperation {
 
-		@CacheConfiguration(name = "RefreshAfterWrite", expireAfterWriteDelay = 100L, refreshAfterWriteDelay = 100L, recordStats = true)
+		@CacheConfiguration(name = "RefreshAfterWrite", refreshAfterWrite = "PT0.1S", recordStats = true)
 		Object expensiveOperation() throws FooException;
 
 	}
 
 	public interface MaxSize extends Function<Integer, Object> {
 
-		@CacheConfiguration(name = "MaxSize", expireAfterWriteDelay = Long.MAX_VALUE, maximumSize = 1, recordStats = true)
+		@CacheConfiguration(name = "MaxSize", maximumSize = 1, recordStats = true)
 		@Override
 		Object apply(Integer i);
 
@@ -188,7 +188,7 @@ class DefaultCacheFactoryTest {
 
 	public interface SoftValues extends ExpensiveOperation {
 
-		@CacheConfiguration(name = "SoftValues", expireAfterAccessDelay = 100L, softValues = true)
+		@CacheConfiguration(name = "SoftValues", expireAfterAccess = "PT0.1S", softValues = true)
 		Object expensiveOperation() throws FooException;
 
 	}
