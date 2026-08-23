@@ -2,363 +2,209 @@ package com.tagadvance.cache;
 
 import static java.util.Objects.requireNonNull;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.ExecutionError;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.tagadvance.proxy.Invocation;
 import com.tagadvance.proxy.InvocationInterceptor;
 import com.tagadvance.proxy.InvocationProxy;
-import com.tagadvance.reflection.M;
-import com.tagadvance.reflection.ReflectionException;
-import com.tagadvance.utilities.Benchmark;
-import com.tagadvance.utilities.Once;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-import java.util.stream.Stream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 
+/**
+ * Builds caching proxies. Every {@link CacheConfiguration annotated} method on the proxied
+ * interface gets its own {@link Cache}, created and validated up front so that a malformed
+ * duration or a duplicate name fails here rather than at first use.
+ */
 public final class DefaultCacheFactory implements CacheFactory {
 
-	private static final Logger log = LoggerFactory.getLogger(DefaultCacheFactory.class);
-
-	private final ScheduledExecutorService executor;
-
-	public DefaultCacheFactory() {
-		this(Executors.newSingleThreadScheduledExecutor());
-	}
-
-	public DefaultCacheFactory(final ScheduledExecutorService executor) {
-		this.executor = requireNonNull(executor, "executor must not be null");
-	}
+	/**
+	 * Stands in for a {@literal null} return value, which Guava's cache will not store.
+	 */
+	private static final Object NULL = new Object();
 
 	@Override
 	public <T, I extends T> CacheController<I> newCache(final Class<I> instanceType,
 		final T instance) {
-		final var callback = new ReadThroughOperation();
-		final var proxy = InvocationProxy.createProxy(instanceType, instance, callback);
+		requireNonNull(instanceType, "instanceType must not be null");
+		requireNonNull(instance, "instance must not be null");
 
-		return new DefaultCacheController<>(callback, proxy);
+		final var cachesByName = new LinkedHashMap<String, OperationCache>();
+		final var cachesByMethod = new HashMap<Method, OperationCache>();
+		final var methods = List.of(instanceType.getMethods());
+		for (final var method : methods) {
+			// a bridge method carries a copy of the annotation; it is not a second cache
+			if (method.isBridge() || method.isSynthetic()) {
+				continue;
+			}
+
+			final var configuration = method.getAnnotation(CacheConfiguration.class);
+			if (configuration == null) {
+				continue;
+			}
+
+			final var settings = CacheSettings.from(configuration);
+			final var cache = new OperationCache(settings, method, instance);
+			final var previous = cachesByName.putIfAbsent(settings.name(), cache);
+			if (previous != null) {
+				throw new IllegalArgumentException(
+					"%s declares more than one cache named \"%s\"".formatted(instanceType.getName(),
+						settings.name()));
+			}
+
+			// the proxy may hand us a bridge method or another override of the same signature
+			methods.stream()
+				.filter(m -> signatureEquals(m, method) || configuration.equals(
+					m.getAnnotation(CacheConfiguration.class)))
+				.forEach(m -> cachesByMethod.put(m, cache));
+		}
+
+		final var interceptor = new ReadThroughOperation(Map.copyOf(cachesByMethod));
+		final var proxy = InvocationProxy.createProxy(instanceType, instance, interceptor);
+
+		return new DefaultCacheController<>(proxy, Map.copyOf(cachesByName));
 	}
 
-	private class DefaultCacheController<I> implements CacheController<I> {
+	private static boolean signatureEquals(final Method method, final Method otherMethod) {
+		return method.getName().equals(otherMethod.getName()) && Arrays.equals(
+			method.getParameterTypes(), otherMethod.getParameterTypes());
+	}
 
-		private final ReadThroughOperation callback;
-		private final I proxy;
-
-		public DefaultCacheController(final ReadThroughOperation callback, final I proxy) {
-			this.callback = callback;
-			this.proxy = proxy;
-		}
-
-		@Override
-		public I proxy() {
-			return this.proxy;
-		}
+	private record DefaultCacheController<I>(I proxy,
+											 Map<String, OperationCache> cachesByName) implements
+		CacheController<I> {
 
 		@Override
-		public List<Cache> getCaches(final String name) {
+		public Optional<Cache> getCache(final String name) {
 			requireNonNull(name, "name must not be null");
 
-			return callback.getCaches(name);
+			return Optional.ofNullable(cachesByName.get(name));
+		}
+
+		@Override
+		public Collection<Cache> caches() {
+			return List.copyOf(cachesByName.values());
 		}
 
 	}
 
-	private class ReadThroughOperation implements InvocationInterceptor {
+	private record ReadThroughOperation(
+		Map<Method, OperationCache> cachesByMethod) implements InvocationInterceptor {
 
-		private final ConcurrentHashMap<Method, InvocationInterceptor> callbackByMethod = new ConcurrentHashMap<>();
+		@Override
+		public Object onInvocation(final Invocation invocation) throws Throwable {
+			final var cache = cachesByMethod.get(invocation.method());
 
-		private ReadThroughOperation() {
+			return cache == null ? PassiveOperation.getInstance().onInvocation(invocation)
+				: cache.onInvocation(invocation);
 		}
 
-		private List<Cache> getCaches(final String name) {
-			return callbackByMethod.values().stream().filter(value -> {
-				if (value instanceof final Cache cache) {
-					return Objects.equals(name, cache.name());
-				}
+	}
 
-				return false;
-			}).map(value -> (Cache) value).toList();
+	private static final class OperationCache implements Cache, InvocationInterceptor {
+
+		private final CacheSettings settings;
+
+		private final Method method;
+
+		private final Object instance;
+
+		private final LoadingCache<CacheKey, Object> cache;
+
+		private OperationCache(final CacheSettings settings, final Method method,
+			final Object instance) {
+			this.settings = settings;
+			this.method = CacheUtils.resolve(method, instance);
+			this.instance = instance;
+			this.cache = build(settings, new CacheLoader<>() {
+				@Override
+				public Object load(final CacheKey key) throws Exception {
+					return OperationCache.this.load(key);
+				}
+			});
+		}
+
+		private static LoadingCache<CacheKey, Object> build(final CacheSettings settings,
+			final CacheLoader<CacheKey, Object> loader) {
+			final var builder = CacheBuilder.newBuilder()
+				.initialCapacity(settings.initialCapacity());
+			settings.expireAfterAccess().ifPresent(builder::expireAfterAccess);
+			settings.expireAfterWrite().ifPresent(builder::expireAfterWrite);
+			settings.refreshAfterWrite().ifPresent(builder::refreshAfterWrite);
+			if (settings.maximumSize() >= 0) {
+				builder.maximumSize(settings.maximumSize());
+			}
+
+			if (settings.softValues()) {
+				builder.softValues();
+			}
+
+			if (settings.recordStats()) {
+				builder.recordStats();
+			}
+
+			return builder.build(loader);
+		}
+
+		private Object load(final CacheKey key) throws Exception {
+			try {
+				final var value = CacheUtils.invoke(method, instance, key.args());
+
+				return value == null ? NULL : value;
+			} catch (final Exception | Error e) {
+				throw e;
+			} catch (final Throwable t) {
+				throw new IllegalStateException(t);
+			}
 		}
 
 		@Override
 		public Object onInvocation(final Invocation invocation) throws Throwable {
-			final var method = invocation.method();
-
-			return callbackByMethod.computeIfAbsent(method, key -> M.getAnnotations(key)
-				.filter(a -> a instanceof CacheConfiguration)
-				.map(a -> (CacheConfiguration) a)
-				.findFirst()
-				.map(a -> (InvocationInterceptor) new OperationCache(a))
-				.orElseGet(PassiveOperation::getInstance)).onInvocation(invocation);
-		}
-
-	}
-
-	private class OperationCache implements Cache, InvocationInterceptor {
-
-		private final CacheConfiguration cacheConfiguration;
-
-		private final ConcurrentHashMap<CacheKey, CacheEntry> map;
-
-		private final ConcurrentHashMap<CacheKey, ScheduledFuture<?>> afterAccessFutures;
-
-		private final ConcurrentHashMap<CacheKey, ScheduledFuture<?>> afterWriteFutures;
-
-		private final ConcurrentHashMap<CacheKey, ScheduledFuture<?>> refreshAfterWriteFutures;
-
-		private final CacheEntryFactory factory;
-
-		private final Supplier<CacheStatistics> statisticsSupplier = Once.supplier(
-			CacheStatistics::new);
-
-		private final EvictionStrategy evictionStrategy;
-
-		public OperationCache(final CacheConfiguration cacheConfiguration) {
-			this.cacheConfiguration = validateConfiguration(cacheConfiguration);
-			final var initialCapacity = cacheConfiguration.initialCapacity();
-			this.map = new ConcurrentHashMap<>(initialCapacity);
-			this.afterAccessFutures = new ConcurrentHashMap<>(initialCapacity);
-			this.afterWriteFutures = new ConcurrentHashMap<>(initialCapacity);
-			this.refreshAfterWriteFutures = new ConcurrentHashMap<>(initialCapacity);
-			this.factory = newCacheEntryFactory();
-			final var evictionStrategy = cacheConfiguration.evictionStrategy();
-			this.evictionStrategy = newEvictionStrategy(evictionStrategy);
-		}
-
-		private CacheConfiguration validateConfiguration(
-			final CacheConfiguration cacheConfiguration) {
-			final var refreshDelay = cacheConfiguration.refreshAfterWriteDelay();
-			final var refreshTimeUnit = cacheConfiguration.refreshAfterWriteTimeUnit();
-			final var refresh = refreshTimeUnit.toMicros(refreshDelay);
-
-			final var writeDelay = cacheConfiguration.expireAfterWriteDelay();
-			final var writeTimeUnit = cacheConfiguration.expireAfterWriteTimeUnit();
-			final var write = writeTimeUnit.toMicros(writeDelay);
-
-			if (refresh > 0 && write > 0) {
-				log.warn(
-					"Invalid cache configuration detected: `expireAfterWrite` and `refreshAfterWrite` are both set");
-			}
-
-			return cacheConfiguration;
-		}
-
-		private CacheEntryFactory newCacheEntryFactory() {
-			return value -> cacheConfiguration.softValues() ? new SoftCacheEntry(value)
-				: new DefaultCacheEntry(value);
-		}
-
-		private EvictionStrategy newEvictionStrategy(final Class<? extends EvictionStrategy> c) {
 			try {
-				return c.getDeclaredConstructor().newInstance();
-			} catch (final InvocationTargetException | InstantiationException |
-						   IllegalAccessException | NoSuchMethodException e) {
-				final var message = "%s is missing public constructor with no arguments".formatted(
-					c.getName());
-				throw new ReflectionException(message, e);
+				final var value = cache.get(new CacheKey(invocation.args()));
+
+				return value == NULL ? null : value;
+			} catch (final ExecutionException | UncheckedExecutionException | ExecutionError e) {
+				// what the real method threw, restored
+				throw e.getCause();
 			}
 		}
 
 		@Override
-		public CacheConfiguration configuration() {
-			return this.cacheConfiguration;
+		public String name() {
+			return settings.name();
 		}
 
 		@Override
-		public int size() {
-			return map.size();
+		public long size() {
+			cache.cleanUp();
+
+			return cache.size();
 		}
 
 		@Override
 		public void clear() {
-			map.keySet().removeIf(key -> {
-				clearAllFutures(key);
-
-				return true;
-			});
+			cache.invalidateAll();
 		}
 
-		private void clearAllFutures(final CacheKey key) {
-			Stream.of(afterAccessFutures, afterWriteFutures, refreshAfterWriteFutures)
-				.forEach(map -> {
-					final var future = map.get(key);
-					if (future != null) {
-						future.cancel(false);
-						map.remove(key);
-					}
-				});
+		@Override
+		public void invalidate(final Object... args) {
+			cache.invalidate(new CacheKey(args));
 		}
 
 		@Override
 		public CacheStatistics statistics() {
-			return statisticsSupplier.get();
+			return CacheStatistics.from(cache.stats());
 		}
-
-		@Override
-		public Object onInvocation(final Invocation invocation) throws Throwable {
-			final var method = invocation.method();
-			final var args = invocation.args();
-			final var cacheKey = new CacheKey(method, args);
-
-			expireAfterAccess(cacheKey);
-
-			try {
-				return map.compute(cacheKey, (key, currentValue) -> {
-					if (currentValue != null) {
-						final var value = currentValue.value();
-						if (value != null) {
-							recordStats(CacheStatistics::hit);
-
-							return currentValue;
-						}
-					}
-
-					recordStats(CacheStatistics::miss);
-
-					final var instance = invocation.instance();
-					final Supplier<Object> supplier = createSupplier(method, args, instance);
-					final var value = supplier.get();
-
-					try {
-						return factory.newCacheEntry(value);
-					} finally {
-						expireAfterWrite(key);
-
-						refreshAfterWrite(key, supplier);
-					}
-				});
-			} catch (final ReflectionException e) {
-				throw CacheUtils.toValidException(e, method);
-			} finally {
-				runEviction();
-			}
-		}
-
-		private Supplier<Object> createSupplier(final Method method, final Object[] args,
-			final Object instance) {
-			final var instanceClass = instance.getClass();
-			final var matchingMethods = M.getMethods(instanceClass)
-				.filter(m -> CacheUtils.methodSignatureEquals(m, method))
-				.toList();
-			final Supplier<Object> supplier = switch (matchingMethods.size()) {
-				case 0 -> throw new ReflectionException("no matching method found",
-					new IllegalArgumentException());
-				case 1 -> {
-					final var match = matchingMethods.get(0);
-
-					yield () -> {
-						match.trySetAccessible();
-
-						return M.invoke(instance, args).apply(match);
-					};
-				}
-				default ->
-					throw new ReflectionException("ambiguous method %s".formatted(method.getName()),
-						new IllegalArgumentException());
-			};
-
-			return cacheConfiguration.recordStats() ? () -> {
-				try {
-					return Benchmark.profile(supplier,
-						duration -> recordStats(stats -> stats.loadSuccess(duration)));
-				} catch (final RuntimeException e) {
-					recordStats(CacheStatistics::loadException);
-
-					throw e;
-				}
-			} : supplier;
-		}
-
-		private void expireAfterAccess(final CacheKey key) {
-			final var delay = cacheConfiguration.expireAfterAccessDelay();
-			if (delay < 0) {
-				return;
-			}
-
-			afterAccessFutures.compute(key, (k, v) -> {
-				if (v != null) {
-					v.cancel(false);
-				}
-
-				final var unit = cacheConfiguration.expireAfterAccessTimeUnit();
-
-				return executor.schedule(() -> evict(k), delay, unit);
-			});
-		}
-
-		private void expireAfterWrite(final CacheKey key) {
-			final var delay = cacheConfiguration.expireAfterWriteDelay();
-			if (delay < 0) {
-				return;
-			}
-
-			final var unit = cacheConfiguration.expireAfterWriteTimeUnit();
-			afterWriteFutures.compute(key, (k, v) -> {
-				if (v != null) {
-					v.cancel(false);
-				}
-
-				return executor.schedule(() -> evict(k), delay, unit);
-			});
-		}
-
-		private void evict(final CacheKey key) {
-			map.remove(key);
-			recordStats(CacheStatistics::eviction);
-		}
-
-		private void refreshAfterWrite(final CacheKey key, final Supplier<Object> supplier) {
-			final var refreshDelay = cacheConfiguration.refreshAfterWriteDelay();
-			if (refreshDelay < 0) {
-				return;
-			}
-
-			final var unit = cacheConfiguration.refreshAfterWriteTimeUnit();
-			refreshAfterWriteFutures.compute(key, (k, v) -> {
-				if (v != null) {
-					v.cancel(false);
-				}
-
-				return executor.schedule(() -> {
-					try {
-						final var value = supplier.get();
-						final var record = factory.newCacheEntry(value);
-						map.put(k, record);
-					} catch (final ReflectionException e) {
-						final var message = "Refresh after write failed! %s #%s(...)".formatted(
-							cacheConfiguration.name(), key.getMethod().getName());
-						log.warn(message, e);
-					}
-				}, refreshDelay, unit);
-			});
-		}
-
-		private void recordStats(final Consumer<CacheStatistics> consumer) {
-			if (cacheConfiguration.recordStats()) {
-				final var stats = statisticsSupplier.get();
-				consumer.accept(stats);
-			}
-		}
-
-		private void runEviction() {
-			final var values = map.values();
-			final var limit = cacheConfiguration.maximumSize();
-			evictionStrategy.evict(values, limit);
-		}
-
-	}
-
-	@FunctionalInterface
-	private interface CacheEntryFactory {
-
-		CacheEntry newCacheEntry(final Object value);
 
 	}
 
