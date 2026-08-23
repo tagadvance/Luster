@@ -110,19 +110,16 @@ public class Mockingbird {
 					.collect(Collectors.joining(", ")));
 		}
 
-		if (isObjectMethod(invocation)) {
-			logger.debug("Deferring to invocation");
-
-			return invocation.invoke();
-		}
-
 		final var mimicPath = path.resolve(iface.getName())
 			.resolve(generator.toName(iface, invocation));
 
 		if (mode != Mode.RECORD && Files.isReadable(mimicPath)) {
 			logger.debug("Reading mimic from {}", mimicPath);
-
-			return replay(mimicPath, invocation.method());
+			try {
+				return replay(mimicPath, invocation.method());
+			} catch (final IOException e) {
+				throw new MimicReplayException("could not read %s".formatted(mimicPath), e);
+			}
 		}
 
 		if (mode == Mode.REPLAY) {
@@ -130,7 +127,11 @@ public class Mockingbird {
 				"no recording at %s; run with %s to create one".formatted(mimicPath, Mode.AUTO));
 		}
 
-		return record(mimicPath, invocation);
+		try {
+			return record(mimicPath, invocation);
+		} catch (final IOException e) {
+			throw new MimicReplayException("could not write %s".formatted(mimicPath), e);
+		}
 	}
 
 	private Object replay(final Path mimicPath, final Method method) throws Throwable {
@@ -252,19 +253,6 @@ public class Mockingbird {
 		final var type = method.getReturnType();
 
 		return type == void.class || type == Void.class;
-	}
-
-	/**
-	 * The debugger calls toString repeatedly. These calls should not be mimicked.
-	 *
-	 * @param invocation an {@link Invocation invocation}
-	 * @return {@literal true} if the {@link Method#getDeclaringClass() declaring class} is
-	 * {@link Object}
-	 */
-	private boolean isObjectMethod(final Invocation invocation) {
-		final var method = invocation.method();
-
-		return method.getDeclaringClass() == Object.class;
 	}
 
 	/**
