@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -26,7 +27,7 @@ public final class Exec implements Closeable {
 
 	private static final Logger logger = LoggerFactory.getLogger(Exec.class);
 
-	private static final Sleep sleep = Thread::sleep;
+	private static final Sleep sleep = Sleep.ofThread();
 
 	private final ExecutorService service = Executors.newSingleThreadExecutor();
 
@@ -94,7 +95,7 @@ public final class Exec implements Closeable {
 		while (isAlive.get()) {
 			if (flush() == 0 && isAlive.get()) {
 				// busy-wait
-				if (!sleep.slept(1)) {
+				if (!sleep.slept(1, TimeUnit.MILLISECONDS)) {
 					break;
 				}
 			}
