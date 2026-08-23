@@ -27,13 +27,15 @@ public final class Tail {
 	 * @throws UnsupportedOperationException on Windows, which has no {@code tail}
 	 */
 	public static List<String> of(final Path path) {
-		final var operatingSystem = OperatingSystem.getOperatingSystem().orElse(null);
-		if (operatingSystem == OperatingSystem.WINDOWS) {
-			throw new UnsupportedOperationException("tail is not available on Windows");
-		}
-
-		// GNU long options exist only on Linux; the short forms are the safer guess elsewhere
-		return operatingSystem == OperatingSystem.LINUX ? forLinux(path) : forBsd(path);
+		return OperatingSystem.getOperatingSystem()
+			.map(operatingSystem -> switch (operatingSystem) {
+				case WINDOWS ->
+					throw new UnsupportedOperationException("tail is not available on Windows");
+				case LINUX -> forLinux(path);
+				// GNU long options exist only on Linux; the short forms are the safer guess
+				default -> forBsd(path);
+			})
+			.orElseGet(() -> forBsd(path));
 	}
 
 	/**
