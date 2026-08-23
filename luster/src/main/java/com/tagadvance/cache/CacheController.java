@@ -1,8 +1,13 @@
 package com.tagadvance.cache;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
+/**
+ * Holds the proxy and the {@link Cache caches} behind it.
+ *
+ * @param <I> the proxied interface type
+ */
 public interface CacheController<I> {
 
 	/**
@@ -11,22 +16,16 @@ public interface CacheController<I> {
 	I proxy();
 
 	/**
-	 * Attempts to retrieve the {@link Cache cache} with the specified name. If there are multiple
-	 * caches with the same name then the result is non-deterministic.
+	 * Names are unique within a proxied interface, so this is deterministic.
 	 *
-	 * @param name the name of the cache as specified by {@link CacheConfiguration#name()}
+	 * @param name the name declared by {@link CacheConfiguration#name()}
 	 * @return an {@link Optional optional} {@link Cache cache}
 	 */
-	default Optional<Cache> getCache(String name) {
-		return getCaches(name).stream().findAny();
-	}
+	Optional<Cache> getCache(String name);
 
 	/**
-	 * Attempts to retrieve the {@link Cache caches} with the specified name.
-	 *
-	 * @param name the name of the cache as specified by {@link CacheConfiguration#name()}
-	 * @return a {@link List list} of {@link Cache caches}
+	 * @return every {@link Cache cache} behind this proxy
 	 */
-	List<Cache> getCaches(String name);
+	Collection<Cache> caches();
 
 }
