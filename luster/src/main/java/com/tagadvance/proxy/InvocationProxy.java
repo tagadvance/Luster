@@ -30,6 +30,7 @@ public class InvocationProxy {
 		return (I) Proxy.newProxyInstance(classLoader, interfaces, (proxy, method, args) -> {
 			final var invocation = new Invocation(proxy, method, instance, args);
 
+			// FIXME: validate throwable to prevent invalid exception
 			return interceptor.onInvocation(invocation);
 		});
 	}
