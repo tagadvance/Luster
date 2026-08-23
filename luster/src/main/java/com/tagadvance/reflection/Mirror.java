@@ -42,6 +42,27 @@ public class Mirror {
 	 * keeps serving the members it had when it was first seen. Callers that must observe such a
 	 * change have to use the uncached methods.
 	 *
+	 * <p>Members are replayed rather than copied, so
+	 * {@link java.lang.reflect.AccessibleObject#setAccessible(boolean) setAccessible} on a cached
+	 * member is visible to every caller of this view. On a path that reflects over the same class
+	 * repeatedly, that is the point - the accessibility check is paid once instead of once per
+	 * pass:
+	 *
+	 * <pre>{@code
+	 * final var mirror = Mirror.cached();
+	 *
+	 * mirror.getAllFields(Tenant.class).forEach(field -> field.setAccessible(true));
+	 *
+	 * // later, and for every other caller of the view: the same Field objects, already open
+	 * final var values = mirror.getAllFields(Tenant.class)
+	 * 	.map(M.get(tenant))
+	 * 	.toList();
+	 * }</pre>
+	 *
+	 * <p>The same property is a hazard when it is not intended: a caller cannot assume a member
+	 * from this view is still inaccessible, because something else may have opened it. Where that
+	 * matters, use the uncached methods, which hand back a fresh array every time.
+	 *
 	 * @return a shared, memoized view of this utility
 	 * @see CachedMirror
 	 */
