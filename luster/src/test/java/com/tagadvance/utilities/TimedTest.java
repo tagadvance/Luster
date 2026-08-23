@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -77,15 +78,13 @@ class TimedTest {
 	}
 
 	@Test
-	void testPredicateSuccess() {
-		final var test = Timed.wrap(Objects::isNull, TimedTest::assertValid).test(null);
-		assertTrue(test);
-	}
+	@DisplayName("a predicate is timed through the function overload")
+	void testPredicate() {
+		final Predicate<Object> isNull = Timed.wrap((Function<Object, Boolean>) Objects::isNull,
+			TimedTest::assertValid)::apply;
 
-	@Test
-	void testPredicateFailure() {
-		final var test = Timed.wrap(Objects::nonNull, TimedTest::assertValid).test(new Object());
-		assertTrue(test);
+		assertTrue(isNull.test(null));
+		assertFalse(isNull.test(new Object()));
 	}
 
 	@Test

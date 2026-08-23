@@ -3,7 +3,7 @@ package com.tagadvance.utilities;
 import static java.util.Objects.requireNonNull;
 
 import com.google.common.base.Stopwatch;
-import com.tagadvance.exception.CheckedSupplier;
+import com.tagadvance.exception.ThrowingSupplier;
 import java.time.Duration;
 import java.util.concurrent.Callable;
 import java.util.function.BiFunction;
@@ -34,7 +34,7 @@ public final class Timed {
 	 * @return the value returned by the operation
 	 * @throws E the type of exception that may be thrown
 	 */
-	public static <V, E extends Exception> V profile(final CheckedSupplier<V, E> supplier,
+	public static <V, E extends Exception> V profile(final ThrowingSupplier<V, E> supplier,
 		final Consumer<Duration> durationConsumer) throws E {
 		requireNonNull(supplier, "supplier must not be null");
 		requireNonNull(durationConsumer, "durationConsumer must not be null");
@@ -95,6 +95,9 @@ public final class Timed {
 	 * @param <T>              the type of the input to the predicate
 	 * @return a {@link Predicate} that times each invocation of the supplied {@link Predicate}
 	 */
+	// an implicitly typed lambda cannot pick between the single-argument overloads; callers
+	// disambiguate with an explicit target type, which is cheaper than dropping the adapters
+	@SuppressWarnings("overloads")
 	public static <T> Predicate<T> wrap(final Predicate<T> predicate,
 		final Consumer<Duration> durationConsumer) {
 		requireNonNull(predicate, "predicate must not be null");
@@ -109,6 +112,7 @@ public final class Timed {
 	 * @param <R>              the type of the result of the function
 	 * @return a {@link Function} that times each invocation of the supplied {@link Function}
 	 */
+	@SuppressWarnings("overloads")
 	public static <T, R> Function<T, R> wrap(final Function<T, R> function,
 		final Consumer<Duration> durationConsumer) {
 		requireNonNull(function, "function must not be null");
@@ -137,6 +141,7 @@ public final class Timed {
 	 * @param <T>              the type of the input to the consumer
 	 * @return a {@link Consumer} that times each invocation of the supplied {@link Consumer}
 	 */
+	@SuppressWarnings("overloads")
 	public static <T> Consumer<T> wrap(final Consumer<T> consumer,
 		final Consumer<Duration> durationConsumer) {
 		requireNonNull(consumer, "consumer must not be null");

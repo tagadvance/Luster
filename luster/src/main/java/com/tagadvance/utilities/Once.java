@@ -19,6 +19,11 @@ public final class Once {
 	 * threads call the returned {@link Supplier}. The value it returns, {@code null} included, is
 	 * cached and returned to every subsequent caller.
 	 *
+	 * <p>This delegates to {@link Suppliers#memoize(com.google.common.base.Supplier)}, but takes
+	 * and returns the {@link java.util.function} type. Guava is an implementation detail of this
+	 * library rather than part of its API, so callers should not need it on their own classpath to
+	 * memoize a {@link Supplier}.</p>
+	 *
 	 * @param supplier the {@link Supplier} to invoke once
 	 * @param <T>      the type of the supplied value
 	 * @return the memoizing {@link Supplier}

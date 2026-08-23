@@ -1,6 +1,6 @@
 package com.tagadvance.shell;
 
-import com.tagadvance.exception.CheckedSupplier;
+import com.tagadvance.exception.ThrowingSupplier;
 import com.tagadvance.utilities.Sleep;
 import java.io.BufferedReader;
 import java.io.Closeable;
@@ -29,6 +29,7 @@ public final class Exec implements Closeable {
 
 	private static final Sleep sleep = Sleep.ofThread();
 
+	// TODO: make this injectable
 	private final ExecutorService service = Executors.newSingleThreadExecutor();
 
 	private final AtomicReference<Future<?>> future = new AtomicReference<>();
@@ -37,6 +38,7 @@ public final class Exec implements Closeable {
 
 	// use a separate list to avoid ConcurrentModificationException
 	// more efficient than CopyOnWriteArrayList due to removals
+	// TODO: remove Collections.synchronizedList
 	private final List<Resource> resourceQueue = Collections.synchronizedList(new ArrayList<>());
 
 	private final List<Resource> resources = Collections.synchronizedList(new ArrayList<>());
@@ -55,7 +57,7 @@ public final class Exec implements Closeable {
 	 * @param mixedConsumer   a callback that will receive the output from both STDOUT and STDERR.
 	 * @throws IOException if an I/O error occurs
 	 */
-	public void start(final CheckedSupplier<Process, IOException> processSupplier,
+	public void start(final ThrowingSupplier<Process, IOException> processSupplier,
 		final Consumer<String> mixedConsumer) throws IOException {
 		start(processSupplier, mixedConsumer, mixedConsumer);
 	}
@@ -68,7 +70,7 @@ public final class Exec implements Closeable {
 	 * @param errConsumer     a callback that will receive the output from STDERR
 	 * @throws IOException if an I/O error occurs
 	 */
-	public void start(final CheckedSupplier<Process, IOException> processSupplier,
+	public void start(final ThrowingSupplier<Process, IOException> processSupplier,
 		final Consumer<String> outConsumer, final Consumer<String> errConsumer) throws IOException {
 		if (!isAlive.get()) {
 			throw new IOException("%s is already closed".formatted(getClass().getSimpleName()));
@@ -93,7 +95,7 @@ public final class Exec implements Closeable {
 
 	private void startFlush() {
 		while (isAlive.get()) {
-			if (flush() == 0 && isAlive.get()) {
+			if (flush() == 0) {
 				// busy-wait
 				if (!sleep.slept(1, TimeUnit.MILLISECONDS)) {
 					break;

@@ -1,31 +1,34 @@
 package com.tagadvance.cache;
 
+/**
+ * A single method's cache.
+ */
 public interface Cache {
 
 	/**
-	 * @return the {@link CacheConfiguration cache configuration}
+	 * @return this cache's name, as declared by {@link CacheConfiguration#name()}
 	 */
-	CacheConfiguration configuration();
+	String name();
 
 	/**
-	 * @return this cache's name
+	 * @return the number of entries currently held
 	 */
-	default String name() {
-		return configuration().name();
-	}
+	long size();
 
 	/**
-	 * @return the size of the cache
-	 */
-	int size();
-
-	/**
-	 * Clear the cache.
+	 * Discards every entry.
 	 */
 	void clear();
 
 	/**
-	 * @return the {@link CacheStatistics cache statistics}
+	 * Discards the entry for one set of arguments, if present.
+	 *
+	 * @param args the arguments the cached call was made with
+	 */
+	void invalidate(Object... args);
+
+	/**
+	 * @return a snapshot of this cache's {@link CacheStatistics statistics}
 	 */
 	CacheStatistics statistics();
 

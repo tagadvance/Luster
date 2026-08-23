@@ -1,169 +1,90 @@
 package com.tagadvance.cache;
 
-import com.google.common.base.MoreObjects;
-import java.time.Duration;
-import java.util.concurrent.atomic.AtomicLong;
+import com.google.common.cache.CacheStats;
 import java.util.stream.Stream;
 
-public final class CacheStatistics {
+/**
+ * An immutable snapshot of a {@link Cache cache's} statistics. Only populated when
+ * {@link CacheConfiguration#recordStats()} is enabled; otherwise every count is zero.
+ *
+ * @param hitCount           the number of lookups served from the cache
+ * @param missCount          the number of lookups that had to load
+ * @param loadSuccessCount   the number of loads that completed successfully
+ * @param loadExceptionCount the number of loads that threw
+ * @param totalLoadTime      the total time spent loading, in nanoseconds
+ * @param evictionCount      the number of entries evicted, not counting manual invalidation
+ */
+public record CacheStatistics(long hitCount, long missCount, long loadSuccessCount,
+							  long loadExceptionCount, long totalLoadTime, long evictionCount) {
 
-	private final AtomicLong hitCount = new AtomicLong();
-
-	private final AtomicLong missCount = new AtomicLong();
-
-	private final AtomicLong loadSuccessCount = new AtomicLong();
-
-	private final AtomicLong loadExceptionCount = new AtomicLong();
-
-	private final AtomicLong loadTime = new AtomicLong();
-
-	private final AtomicLong evictionCount = new AtomicLong();
-
-	CacheStatistics() {
-
-	}
-
-	void hit() {
-		hitCount.incrementAndGet();
-	}
-
-	void miss() {
-		missCount.incrementAndGet();
-	}
-
-	void loadSuccess(final Duration duration) {
-		final var nanos = duration.toNanos();
-		loadSuccess(nanos);
-	}
-
-	void loadSuccess(final long nanos) {
-		loadSuccessCount.incrementAndGet();
-		loadTime.addAndGet(nanos);
-	}
-
-	void loadException() {
-		loadExceptionCount.incrementAndGet();
-	}
-
-	void eviction() {
-		evictionCount.incrementAndGet();
-	}
-
-	public long hitCount() {
-		return hitCount.get();
-	}
-
-	public double hitRate() {
-		return calculateRate(
-			hitCount(),
-			missCount()
-		);
-	}
-
-	public long missCount() {
-		return missCount.get();
-	}
-
-	public double missRate() {
-		return calculateRate(
-			missCount(),
-			hitCount()
-		);
-	}
-
-	public long loadSuccessCount() {
-		return loadSuccessCount.get();
-	}
-
-	public long loadExceptionCount() {
-		return loadExceptionCount.get();
-	}
-
-	public double loadSuccessRate() {
-		return calculateRate(
-			loadSuccessCount(),
-			loadExceptionCount()
-		);
-	}
-
-	public double loadExceptionRate() {
-		return calculateRate(
-			loadExceptionCount(),
-			loadSuccessCount()
-		);
-	}
-
-	public long totalLoadTime() {
-		return loadTime.get();
-	}
-
-	public double averageLoadTime() {
-		if (loadSuccessCount() == 0 || totalLoadTime() == 0) {
-			return 0D;
-		}
-
-		return (double) loadSuccessCount() / (double) totalLoadTime();
-	}
-
-	public long totalRequestCount() {
-		return hitCount.get() + loadSuccessCount.get() + loadExceptionCount.get();
-	}
-
-	public long evictionCount() {
-		return evictionCount.get();
-	}
-
-	public CacheStatistics plus(final CacheStatistics... others) {
-		final var stats = new CacheStatistics();
-		stats.plus(this);
-		Stream.of(others).forEach(this::plus);
-
-		return stats;
-	}
-
-	private void plus(final CacheStatistics other) {
-		hitCount.addAndGet(other.hitCount.get());
-		missCount.addAndGet(other.missCount.get());
-		loadSuccessCount.addAndGet(other.loadSuccessCount.get());
-		loadExceptionCount.addAndGet(other.loadExceptionCount.get());
-		loadTime.addAndGet(other.loadTime.get());
-		evictionCount.addAndGet(other.evictionCount.get());
-	}
-
-	@Override
-	public String toString() {
-		return MoreObjects.toStringHelper(this)
-			.add("hitCount", hitCount())
-			.add("missCount", missCount())
-			.add("hitRate", hitRate())
-			.add("missRate", missRate())
-			.add("loadSuccessCount", loadSuccessCount())
-			.add("loadExceptionCount", loadExceptionCount())
-			.add("loadSuccessRate", loadSuccessRate())
-			.add("loadExceptionRate", loadExceptionRate())
-			.add("loadTime", totalLoadTime())
-			.add("evictionCount", evictionCount())
-			.add("totalRequestCount", totalRequestCount())
-			.toString();
+	static CacheStatistics from(final CacheStats stats) {
+		return new CacheStatistics(stats.hitCount(), stats.missCount(), stats.loadSuccessCount(),
+			stats.loadExceptionCount(), stats.totalLoadTime(), stats.evictionCount());
 	}
 
 	/**
-	 * Calculates rate from success and failure counts.
-	 *
-	 * @param dividend the dividend, may be zero
-	 * @param divisor  the divisor, may be zero
-	 * @return the quotient
+	 * @return {@link #hitCount()} plus {@link #missCount()}
 	 */
-	private static double calculateRate(final long dividend, final long divisor) {
-		if (divisor == 0) {
-			return 1D;
-		} else if (dividend == 0) {
-			return 0D;
-		} else {
-			final var total = dividend + divisor;
+	public long totalRequestCount() {
+		return hitCount + missCount;
+	}
 
-			return (double) dividend / total;
-		}
+	/**
+	 * @return the number of loads, successful or not
+	 */
+	public long loadCount() {
+		return loadSuccessCount + loadExceptionCount;
+	}
+
+	/**
+	 * @return the ratio of hits to requests, or {@literal 1} if there were no requests
+	 */
+	public double hitRate() {
+		final var requestCount = totalRequestCount();
+
+		return requestCount == 0 ? 1D : (double) hitCount / requestCount;
+	}
+
+	/**
+	 * @return the ratio of misses to requests, or {@literal 0} if there were no requests
+	 */
+	public double missRate() {
+		final var requestCount = totalRequestCount();
+
+		return requestCount == 0 ? 0D : (double) missCount / requestCount;
+	}
+
+	/**
+	 * @return the ratio of failed loads to loads, or {@literal 0} if there were no loads
+	 */
+	public double loadExceptionRate() {
+		final var loadCount = loadCount();
+
+		return loadCount == 0 ? 0D : (double) loadExceptionCount / loadCount;
+	}
+
+	/**
+	 * @return the mean time spent loading, in nanoseconds, or {@literal 0} if there were no loads
+	 */
+	public double averageLoadTime() {
+		final var loadCount = loadCount();
+
+		return loadCount == 0 ? 0D : (double) totalLoadTime / loadCount;
+	}
+
+	/**
+	 * @param others the snapshots to add to this one
+	 * @return a new snapshot holding the element-wise sum
+	 */
+	public CacheStatistics plus(final CacheStatistics... others) {
+		return Stream.of(others).reduce(this, CacheStatistics::plus);
+	}
+
+	private CacheStatistics plus(final CacheStatistics other) {
+		return new CacheStatistics(hitCount + other.hitCount, missCount + other.missCount,
+			loadSuccessCount + other.loadSuccessCount,
+			loadExceptionCount + other.loadExceptionCount, totalLoadTime + other.totalLoadTime,
+			evictionCount + other.evictionCount);
 	}
 
 }
