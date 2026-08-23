@@ -3,35 +3,33 @@ package com.tagadvance.exception;
 import java.util.function.Consumer;
 
 /**
- * A {@link Consumer} that throws an exception of type {@link E}.
+ * A {@link Consumer} that erases the checked-ness of {@link E} so the consumer can be handed to
+ * the JDK, e.g. {@link java.util.stream.Stream#forEach(Consumer)}.
+ * <p>
+ * Checked exceptions are rethrown as {@link UncheckedException}; unchecked exceptions propagate
+ * unchanged.
  *
  * @param <I> the type of the input to the operation
  * @param <E> the type of exception that may be thrown by this consumer
  */
 @FunctionalInterface
-public interface CheckedConsumer<I, E extends Exception> extends Consumer<I> {
-
-	/**
-	 * This method is like {@link Consumer#accept(Object)} except that it may throw an exception of
-	 * type {@link E}.
-	 *
-	 * @param i the input argument
-	 * @throws E the type of exception that may be thrown
-	 */
-	void acceptChecked(I i) throws E;
+public interface CheckedConsumer<I, E extends Exception> extends Consumer<I>,
+	ThrowingConsumer<I, E> {
 
 	@Override
-	default void accept(I i) throws UncheckedExecutionException {
+	default void accept(final I i) throws UncheckedException {
 		try {
 			acceptChecked(i);
+		} catch (final RuntimeException e) {
+			throw e;
 		} catch (final Exception e) {
-			throw new UncheckedExecutionException(e);
+			throw new UncheckedException(e);
 		}
 	}
 
 	/**
 	 * This method wraps the supplied {@link CheckedConsumer} in a {@link Consumer} that
-	 * automatically re-throws checked exceptions as {@link UncheckedExecutionException}.
+	 * automatically re-throws checked exceptions as {@link UncheckedException}.
 	 *
 	 * @param consumer a {@link CheckedConsumer}
 	 * @param <I>      the type of the input to the operation

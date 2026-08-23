@@ -9,11 +9,12 @@ repositories {
 }
 
 dependencies {
-    testImplementation("org.junit.jupiter:junit-jupiter:5.+")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation("org.mockito:mockito-core:3.+")
+    testImplementation("org.mockito:mockito-core:5.14.2")
 
     api("org.slf4j:slf4j-api:2.0.17")
+    api("org.jspecify:jspecify:1.0.0")
 
     implementation("com.google.guava:guava:33.4.8-jre")
     implementation("com.google.code.gson:gson:2.13.1")
@@ -25,12 +26,16 @@ java {
     }
 }
 
+tasks.withType<JavaCompile> {
+    options.compilerArgs.add("-Xlint:all")
+}
+
 tasks.named<Test>("test") {
     useJUnitPlatform()
 }
 
 group = "com.tagadvance"
-version = "2.1.0"
+version = "3.0.0-SNAPSHOT"
 
 java {
     withSourcesJar()
