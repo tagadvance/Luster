@@ -19,6 +19,13 @@ import org.slf4j.spi.LocationAwareLogger;
  */
 final class CoalescingLogger extends AbstractLogger {
 
+	/**
+	 * slf4j's {@link AbstractLogger} is {@link java.io.Serializable}; this logger is not
+	 * meaningfully serializable, but the identifier keeps the compiler quiet without pretending
+	 * otherwise.
+	 */
+	private static final long serialVersionUID = 1L;
+
 	private static final String FQCN = CoalescingLogger.class.getName();
 
 	private final Logger delegate;

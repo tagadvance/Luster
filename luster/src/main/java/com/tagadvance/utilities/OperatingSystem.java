@@ -10,16 +10,34 @@ import java.util.Optional;
  */
 public enum OperatingSystem {
 
+	/**
+	 * Any Linux distribution.
+	 */
 	LINUX,
 
+	/**
+	 * macOS, which reports itself as {@literal darwin} or {@literal mac}.
+	 */
 	MAC,
 
+	/**
+	 * Solaris, which reports itself as {@literal solaris} or {@literal sunos}.
+	 */
 	SOLARIS,
 
+	/**
+	 * Any version of Windows.
+	 */
 	WINDOWS,
 
+	/**
+	 * FreeBSD.
+	 */
 	FREE_BSD,
 
+	/**
+	 * IBM AIX.
+	 */
 	AIX;
 
 	private static final String OS_NAME = Optional.of(StandardSystemProperty.OS_NAME)
@@ -27,6 +45,10 @@ public enum OperatingSystem {
 		.map(name -> name.toLowerCase(Locale.ROOT))
 		.orElse("");
 
+	/**
+	 * @return the {@link OperatingSystem} this JVM is running on, or {@link Optional#empty()} if
+	 * it is not one this enum knows about
+	 */
 	public static Optional<OperatingSystem> getOperatingSystem() {
 		if (OperatingSystem.isLinux()) {
 			return Optional.of(LINUX);
@@ -45,26 +67,44 @@ public enum OperatingSystem {
 		}
 	}
 
+	/**
+	 * @return {@literal true} if this JVM is running on Linux
+	 */
 	public static boolean isLinux() {
 		return matches("linux");
 	}
 
+	/**
+	 * @return {@literal true} if this JVM is running on macOS
+	 */
 	public static boolean isMac() {
 		return matches("darwin", "mac");
 	}
 
+	/**
+	 * @return {@literal true} if this JVM is running on Solaris
+	 */
 	public static boolean isSolaris() {
 		return matches("solaris", "sunos");
 	}
 
+	/**
+	 * @return {@literal true} if this JVM is running on Windows
+	 */
 	public static boolean isWindows() {
 		return matches("windows");
 	}
 
+	/**
+	 * @return {@literal true} if this JVM is running on FreeBSD
+	 */
 	public static boolean isFreeBsd() {
 		return matches("freebsd");
 	}
 
+	/**
+	 * @return {@literal true} if this JVM is running on AIX
+	 */
 	public static boolean isAix() {
 		return matches("aix");
 	}

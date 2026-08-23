@@ -17,6 +17,9 @@ import org.junit.jupiter.api.Test;
 /**
  * Tests for {@link ScopedLock} and {@link Locks}.
  */
+// the closeable-lock idiom never references the resource in the body -- that is the point of
+// it -- and there is no way to write it that satisfies -Xlint:try
+@SuppressWarnings("try")
 class ScopedLockTest {
 
 	private final ReentrantReadWriteLock delegate = new ReentrantReadWriteLock();

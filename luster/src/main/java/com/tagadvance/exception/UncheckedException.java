@@ -11,6 +11,8 @@ import static java.util.Objects.requireNonNull;
  */
 public class UncheckedException extends RuntimeException {
 
+	private static final long serialVersionUID = 1L;
+
 	/**
 	 * Constructs a new {@link UncheckedException} with the specified detail message and cause.
 	 *

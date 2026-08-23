@@ -193,6 +193,7 @@ class DefaultCacheFactoryTest {
 
 	}
 
+	@SuppressWarnings("serial")
 	public static class FooException extends Exception {
 
 	}

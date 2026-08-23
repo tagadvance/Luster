@@ -12,6 +12,7 @@ import org.slf4j.spi.LocationAwareLogger;
  * A {@link LocationAwareLogger} that records what it was asked to log. Built on slf4j-api alone,
  * so the tests do not depend on any backend.
  */
+@SuppressWarnings("serial")
 class RecordingLogger extends AbstractLogger implements LocationAwareLogger {
 
 	record Event(Level level, Marker marker, String fqcn, String message, Object[] args,

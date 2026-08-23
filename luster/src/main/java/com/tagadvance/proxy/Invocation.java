@@ -26,6 +26,12 @@ import org.jspecify.annotations.Nullable;
 public record Invocation(@Nullable Object proxy, Method method, @Nullable Object instance,
 						 @Nullable Object... args) {
 
+	/**
+	 * @param proxy    the proxy instance, or {@literal null} when constructed outside a proxy
+	 * @param method   the {@link Method method} to invoke
+	 * @param instance the object the method is invoked on, or {@literal null} for a pure fake
+	 * @param args     the arguments supplied to the method; {@literal null} becomes empty
+	 */
 	public Invocation(final @Nullable Object proxy, final Method method,
 		final @Nullable Object instance, final @Nullable Object... args) {
 		this.proxy = proxy;

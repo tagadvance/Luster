@@ -738,7 +738,10 @@ public class Mirror {
 	 * @return a {@link Predicate filter} that tests the value returned by the
 	 * {@link Function mapper function} using {@link Arrays#equals(Object[], Object[])}
 	 */
+	// @SafeVarargs is the contract for callers; the second suppression is for the body, where
+	// javac cannot see that capturing the array in a lambda only ever reads it
 	@SafeVarargs
+	@SuppressWarnings("varargs")
 	public static <T, R> Predicate<T> withArrayEquals(final Function<T, R[]> mapper,
 		final R... values) {
 		return with(mapper, arr -> Arrays.equals(arr, values));
