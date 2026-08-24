@@ -13,7 +13,7 @@ import org.slf4j.spi.LocationAwareLogger;
  * so the tests do not depend on any backend.
  */
 @SuppressWarnings("serial")
-class RecordingLogger extends AbstractLogger implements LocationAwareLogger {
+final class RecordingLogger extends AbstractLogger implements LocationAwareLogger {
 
 	record Event(Level level, Marker marker, String fqcn, String message, Object[] args,
 				 Throwable throwable, String thread) {

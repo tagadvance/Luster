@@ -53,6 +53,9 @@ public final class ManualScheduler implements ScheduledExecutorService {
 		throw new IllegalStateException("tasks kept rescheduling themselves");
 	}
 
+	/**
+	 * @return how many scheduled tasks have not yet run or been cancelled
+	 */
 	public int pendingTaskCount() {
 		return (int) tasks.stream().filter(task -> !task.cancelled).count();
 	}
