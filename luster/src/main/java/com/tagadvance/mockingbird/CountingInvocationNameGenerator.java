@@ -27,7 +27,7 @@ import java.util.stream.Stream;
  * The counter is per digest, so adding an unrelated call elsewhere in a program does not renumber
  * anything.
  */
-public class CountingInvocationNameGenerator implements InvocationNameGenerator {
+public final class CountingInvocationNameGenerator implements InvocationNameGenerator {
 
 	private static final String EXTENSION = "gson";
 

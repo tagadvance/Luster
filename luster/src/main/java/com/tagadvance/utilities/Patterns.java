@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
  *
  * @see <a href="https://stackoverflow.com/a/19829983/625688">Answer by Seelenvirtuose</a>
  */
-public class Patterns {
+public final class Patterns {
 
 	/**
 	 * Upper bound on the number of cached {@link Pattern patterns}, so compiling patterns from
