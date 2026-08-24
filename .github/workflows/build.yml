@@ -1,0 +1,47 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 17 is the compile target and the floor. The others prove the library still behaves on a
+        # newer runtime -- which matters here, because several decisions in this codebase turn on
+        # virtual-thread and JDK-version behaviour.
+        java: [ '17', '21', '25' ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            ${{ matrix.java }}
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # The toolchain always compiles to 17; -PtestJavaVersion only moves the JVM the tests run on.
+      - run: ./gradlew build -PtestJavaVersion=${{ matrix.java }}
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-java-${{ matrix.java }}
+          path: luster/build/reports/tests/test
