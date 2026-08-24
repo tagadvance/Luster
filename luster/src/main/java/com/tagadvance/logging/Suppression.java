@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
@@ -38,7 +39,7 @@ final class Suppression {
 
 	private final AtomicLong suppressed = new AtomicLong();
 
-	private final Object sampleLock = new Object();
+	private final ReentrantLock sampleLock = new ReentrantLock();
 
 	private final List<Object[]> firstSamples = new ArrayList<>(SAMPLE_SIZE);
 
@@ -82,7 +83,8 @@ final class Suppression {
 		suppressed.incrementAndGet();
 
 		final var sample = args == null ? new Object[0] : args;
-		synchronized (sampleLock) {
+		sampleLock.lock();
+		try {
 			if (firstSamples.size() < SAMPLE_SIZE) {
 				firstSamples.add(sample);
 			}
@@ -92,6 +94,8 @@ final class Suppression {
 			}
 
 			lastSamples.addLast(sample);
+		} finally {
+			sampleLock.unlock();
 		}
 	}
 
@@ -125,7 +129,8 @@ final class Suppression {
 
 	private String detail() {
 		final var builder = new StringBuilder();
-		synchronized (sampleLock) {
+		sampleLock.lock();
+		try {
 			if (!firstSamples.isEmpty()) {
 				builder.append("; first=").append(render(firstSamples));
 			}
@@ -133,6 +138,8 @@ final class Suppression {
 			if (lastSamples.size() == SAMPLE_SIZE) {
 				builder.append(", last=").append(render(lastSamples));
 			}
+		} finally {
+			sampleLock.unlock();
 		}
 
 		if (throwableSummary != null) {

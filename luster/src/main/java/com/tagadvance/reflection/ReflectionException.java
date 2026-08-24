@@ -29,10 +29,13 @@ public class ReflectionException extends RuntimeException {
 	}
 
 	/**
+	 * Not {@literal synchronized}: {@link Throwable#getCause()} already is, so this override would
+	 * only take the same monitor a second time, reentrantly.
+	 *
 	 * @return the cause
 	 */
 	@Override
-	public synchronized Exception getCause() {
+	public Exception getCause() {
 		return (Exception) super.getCause();
 	}
 

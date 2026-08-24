@@ -2,11 +2,11 @@ package com.tagadvance.utilities;
 
 import static java.util.Objects.requireNonNull;
 
-import com.google.common.base.Suppliers;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 /**
@@ -19,10 +19,10 @@ public final class Once {
 	 * threads call the returned {@link Supplier}. The value it returns, {@code null} included, is
 	 * cached and returned to every subsequent caller.
 	 *
-	 * <p>This delegates to {@link Suppliers#memoize(com.google.common.base.Supplier)}, but takes
-	 * and returns the {@link java.util.function} type. Guava is an implementation detail of this
-	 * library rather than part of its API, so callers should not need it on their own classpath to
-	 * memoize a {@link Supplier}.</p>
+	 * <p>The supplier runs under a {@link java.util.concurrent.locks.ReentrantLock} rather than a
+	 * {@literal synchronized} block, so a virtual thread that blocks inside it does not pin its
+	 * carrier. That rules out Guava's {@code Suppliers.memoize}, which is otherwise correct but
+	 * invokes the supplier inside a monitor.</p>
 	 *
 	 * @param supplier the {@link Supplier} to invoke once
 	 * @param <T>      the type of the supplied value
@@ -31,10 +31,32 @@ public final class Once {
 	public static <T> Supplier<T> supplier(final Supplier<T> supplier) {
 		requireNonNull(supplier, "supplier must not be null");
 
-		// Guava memoizes under a lock; AtomicReference#updateAndGet would re-invoke on CAS failure
-		final var memoized = Suppliers.memoize(supplier::get);
+		// a ReentrantLock rather than Guava's memoize, which runs the supplier inside a
+		// synchronized block; AtomicReference#updateAndGet would re-invoke on CAS failure
+		final var lock = new ReentrantLock();
+		final var reference = new AtomicReference<Optional<T>>();
 
-		return memoized::get;
+		return () -> {
+			final var cached = reference.get();
+			if (cached != null) {
+				return cached.orElse(null);
+			}
+
+			lock.lock();
+			try {
+				final var current = reference.get();
+				if (current != null) {
+					return current.orElse(null);
+				}
+
+				final var value = supplier.get();
+				reference.set(Optional.ofNullable(value));
+
+				return value;
+			} finally {
+				lock.unlock();
+			}
+		};
 	}
 
 	/**
@@ -73,20 +95,28 @@ public final class Once {
 	public static <V> Callable<V> callable(final Callable<V> callable) {
 		requireNonNull(callable, "callable must not be null");
 
-		final var lock = new Object();
+		final var lock = new ReentrantLock();
 		final var reference = new AtomicReference<Optional<V>>();
 
 		return () -> {
-			synchronized (lock) {
-				final var cached = reference.get();
-				if (cached != null) {
-					return cached.orElse(null);
+			final var cached = reference.get();
+			if (cached != null) {
+				return cached.orElse(null);
+			}
+
+			lock.lock();
+			try {
+				final var current = reference.get();
+				if (current != null) {
+					return current.orElse(null);
 				}
 
 				final var value = callable.call();
 				reference.set(Optional.ofNullable(value));
 
 				return value;
+			} finally {
+				lock.unlock();
 			}
 		};
 	}

@@ -2,9 +2,9 @@ package com.tagadvance.exception;
 
 import static java.util.Objects.requireNonNull;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Collects every failure in a pipeline and throws once, at the end, with the remaining failures
@@ -23,7 +23,7 @@ import java.util.List;
  */
 public final class ExceptionCollector implements OnError, AutoCloseable {
 
-	private final List<Exception> exceptions = Collections.synchronizedList(new ArrayList<>());
+	private final Queue<Exception> exceptions = new ConcurrentLinkedQueue<>();
 
 	/**
 	 * @return a new, empty {@link ExceptionCollector}
