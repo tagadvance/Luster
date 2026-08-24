@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
  * Not safe for concurrent use: invocations of the same signature are numbered in the order they
  * arrive, so concurrent calls record and replay in a nondeterministic order.
  */
-public class Mockingbird {
+public final class Mockingbird {
 
 	private static final Logger logger = LoggerFactory.getLogger(Mockingbird.class);
 
@@ -159,7 +159,7 @@ public class Mockingbird {
 	 * Rebuilds a recorded failure. Only its type and message survive a recording, so the stack
 	 * trace belongs to the replay rather than the original call.
 	 */
-	private Throwable toThrowable(final Path mimicPath, final BufferedReader reader)
+	private static Throwable toThrowable(final Path mimicPath, final BufferedReader reader)
 		throws IOException {
 		final var typeName = reader.readLine();
 		final var message = reader.lines().collect(Collectors.joining(System.lineSeparator()));
