@@ -8,7 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("Cached Mirror Test")
-class CachedMirrorTest {
+final class CachedMirrorTest {
 
 	@Test
 	@DisplayName("cached() returns a shared view")

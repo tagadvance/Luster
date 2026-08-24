@@ -7,7 +7,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-class StackTracesTest {
+final class StackTracesTest {
 
 	private static final Pattern NAMESPACE = Pattern.compile("^com\\.tagadvance\\.");
 

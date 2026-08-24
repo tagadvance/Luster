@@ -19,7 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("Mirror Hierarchy Test")
-class MirrorHierarchyTest {
+final class MirrorHierarchyTest {
 
 	@Test
 	@DisplayName("getSuperclasses() walks from the class itself up to Object")
@@ -175,7 +175,7 @@ class MirrorHierarchyTest {
 
 	}
 
-	static class Child extends Parent {
+	static final class Child extends Parent {
 
 		public final String childPublic = "child";
 
@@ -184,7 +184,7 @@ class MirrorHierarchyTest {
 			return childPublic;
 		}
 
-		void annotated(@Marked final String a, final int b) {
+		static void annotated(@Marked final String a, final int b) {
 		}
 
 		void boom() {
@@ -193,7 +193,7 @@ class MirrorHierarchyTest {
 
 	}
 
-	static class Sortable implements Comparable<Sortable> {
+	static final class Sortable implements Comparable<Sortable> {
 
 		@Override
 		public int compareTo(final Sortable o) {
