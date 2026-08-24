@@ -5,7 +5,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,7 +27,7 @@ public final class Patterns {
 
 	private static final LoadingCache<PatternCacheKey, Pattern> patternCache = CacheBuilder.newBuilder()
 		.maximumSize(MAXIMUM_CACHE_SIZE)
-		.expireAfterAccess(1, TimeUnit.MINUTES)
+		.expireAfterAccess(Duration.ofMinutes(1))
 		.build(new CacheLoader<>() {
 			@Override
 			public Pattern load(final PatternCacheKey key) {
