@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Tests for {@link CacheStatistics}, whose arithmetic previously had no coverage at all.
  */
-class CacheStatisticsTest {
+final class CacheStatisticsTest {
 
 	@Test
 	void totalRequestCountIsHitsPlusMisses() {

@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Unit tests for {@link DefaultCacheFactory}.
  */
-class DefaultCacheFactoryTest {
+final class DefaultCacheFactoryTest {
 
 	@Test
 	void testException() {
@@ -141,7 +141,7 @@ class DefaultCacheFactoryTest {
 
 	}
 
-	public static class ExpensiveOperationSuccess implements ExpensiveOperation {
+	public static final class ExpensiveOperationSuccess implements ExpensiveOperation {
 
 		public Object expensiveOperation() {
 			return new Object();
@@ -149,7 +149,7 @@ class DefaultCacheFactoryTest {
 
 	}
 
-	public static class ExpensiveOperationFailure implements ExpensiveOperation {
+	public static final class ExpensiveOperationFailure implements ExpensiveOperation {
 
 		public Object expensiveOperation() throws FooException {
 			throw new FooException();

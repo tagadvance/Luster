@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
  * A <em>mask</em> is a sub-interface that adds annotations to an interface owned by a dependency,
  * which cannot be annotated in place.
  */
-class CacheMaskTest {
+final class CacheMaskTest {
 
 	/** Pretend this lives in a dependency and cannot be annotated. */
 	public interface VendorApi {

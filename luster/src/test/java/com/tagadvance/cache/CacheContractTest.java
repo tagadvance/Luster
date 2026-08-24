@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
  * against the hand-rolled implementation so that swapping the storage layer can be shown not to
  * change it.
  */
-class CacheContractTest {
+final class CacheContractTest {
 
 	@Test
 	void concurrentCallsForOneKeyLoadOnce() throws Exception {
@@ -192,7 +192,7 @@ class CacheContractTest {
 
 	}
 
-	public static class RecursiveImpl implements Recursive {
+	public static final class RecursiveImpl implements Recursive {
 
 		Recursive proxy;
 
