@@ -20,7 +20,7 @@ final class PassiveOperation implements InvocationInterceptor {
 	@Override
 	public Object onInvocation(final Invocation invocation) throws Throwable {
 		final var instance = invocation.instance();
-		final var method = CacheUtils.resolve(invocation.method(), instance);
+		final var method = Invocation.resolve(invocation.method(), instance);
 
 		return CacheUtils.invoke(method, instance, invocation.args());
 	}

@@ -88,12 +88,16 @@ public class Mockingbird {
 	}
 
 	/**
+	 * {@literal iface} may be a sub-interface of anything {@literal instance} implements, so an
+	 * interface owned by a dependency can be masked by one that adds annotations.
+	 *
 	 * @param iface    an interface
-	 * @param instance an instance of {@literal iface}
+	 * @param instance an instance of {@literal iface}, or of a supertype of it
+	 * @param <T>      the instance type
 	 * @param <I>      the interface type
 	 * @return a proxy
 	 */
-	public <I> I createProxy(final Class<I> iface, final I instance) {
+	public <T, I extends T> I createProxy(final Class<I> iface, final T instance) {
 		requireNonNull(iface, "iface must not be null");
 		requireNonNull(instance, "instance must not be null");
 

@@ -123,7 +123,7 @@ public final class DefaultCacheFactory implements CacheFactory {
 		private OperationCache(final CacheSettings settings, final Method method,
 			final Object instance) {
 			this.settings = settings;
-			this.method = CacheUtils.resolve(method, instance);
+			this.method = Invocation.resolve(method, instance);
 			this.instance = instance;
 			this.cache = build(settings, new CacheLoader<>() {
 				@Override

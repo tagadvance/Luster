@@ -6,6 +6,7 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -55,22 +56,83 @@ public record Invocation(@Nullable Object proxy, Method method, @Nullable Object
 	 * @see Method#invoke(Object, Object...)
 	 */
 	public Object invoke() throws Throwable {
+		final var target = resolve(method, instance);
+
 		// a static method is legitimately invoked against a null instance
-		if (instance == null && !Modifier.isStatic(method.getModifiers())) {
+		if (instance == null && !Modifier.isStatic(target.getModifiers())) {
 			throw new ProxyInvocationException(
 				"%s has no instance to delegate to; this proxy is a pure fake, so its interceptor must handle every invocation".formatted(
-					method));
+					target));
 		}
 
-		if (!method.canAccess(instance)) {
-			method.trySetAccessible();
+		if (!target.canAccess(instance)) {
+			target.trySetAccessible();
 		}
 
 		try {
-			return method.invoke(instance, args);
+			return target.invoke(instance, args);
 		} catch (final InvocationTargetException e) {
 			throw e.getCause();
 		}
+	}
+
+	/**
+	 * Resolves {@literal method} against {@literal instance}.
+	 * <p>
+	 * A proxy may be created for a sub-interface of anything the instance actually implements —
+	 * {@link InvocationProxy#createProxy} only requires {@code I extends T} — which is what lets a
+	 * <em>mask</em> add annotations to an interface owned by a dependency. In that case the
+	 * interface {@link Method} cannot be invoked against the instance directly, so it is resolved
+	 * against the instance's own class instead.
+	 *
+	 * @param method   the method to resolve
+	 * @param instance the object it will be invoked on, or {@literal null} for a static method
+	 * @return {@literal method}, or the instance's own implementation of it
+	 * @throws ProxyInvocationException if the instance has no such method
+	 */
+	public static Method resolve(final Method method, final @Nullable Object instance) {
+		Objects.requireNonNull(method, "method must not be null");
+		if (instance == null || method.getDeclaringClass().isInstance(instance)) {
+			return method;
+		}
+
+		final var type = instance.getClass();
+		try {
+			return type.getMethod(method.getName(), method.getParameterTypes());
+		} catch (final NoSuchMethodException ignored) {
+			// the instance may carry only the erased override, e.g. Function.apply(Object)
+			// implementing a sub-interface's apply(Integer)
+		}
+
+		final var candidates = Stream.of(type.getMethods())
+			.filter(candidate -> candidate.getName().equals(method.getName()))
+			.filter(candidate -> candidate.getParameterCount() == method.getParameterCount())
+			.filter(candidate -> accepts(candidate, method))
+			.toList();
+		final var preferred = candidates.stream()
+			.filter(candidate -> !candidate.isBridge())
+			.toList();
+
+		return (preferred.isEmpty() ? candidates : preferred).stream()
+			.findFirst()
+			.orElseThrow(() -> new ProxyInvocationException(
+				"%s does not implement %s".formatted(type.getName(), method)));
+	}
+
+	/**
+	 * @return {@literal true} if {@literal candidate} can accept everything {@literal method}
+	 * declares
+	 */
+	private static boolean accepts(final Method candidate, final Method method) {
+		final var candidateTypes = candidate.getParameterTypes();
+		final var declaredTypes = method.getParameterTypes();
+		for (int i = 0; i < candidateTypes.length; i++) {
+			if (!candidateTypes[i].isAssignableFrom(declaredTypes[i])) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	@Override
