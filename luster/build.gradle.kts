@@ -13,7 +13,7 @@ plugins {
 }
 
 group = "com.tagadvance"
-version = "3.0.0-SNAPSHOT"
+version = "3.0.0"
 description =
     "Small, sharp tools for Java: declarative caching, log coalescing, record-and-replay mocks, " +
         "stream-friendly reflection, scoped locks, and deadlock detection the JVM cannot do."
