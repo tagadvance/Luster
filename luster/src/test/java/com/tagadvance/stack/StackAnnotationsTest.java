@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-class StackAnnotationsTest {
+final class StackAnnotationsTest {
 
 	private static final Pattern NAMESPACE = Pattern.compile("^com\\.tagadvance\\.stack\\.");
 
@@ -87,7 +87,7 @@ class StackAnnotationsTest {
 		assertBar(int.class, "bar(int)");
 	}
 
-	private void assertBar(final Class<?> parameterType, final String displayName) {
+	private static void assertBar(final Class<?> parameterType, final String displayName) {
 		final var method = findBar().orElseThrow(
 			() -> new IllegalStateException("expected a bar frame on the stack"));
 
@@ -143,7 +143,7 @@ class StackAnnotationsTest {
 	}
 
 	@DisplayName("class ExtendedFoo")
-	private static class ExtendedFoo extends DefaultFoo {
+	private static final class ExtendedFoo extends DefaultFoo {
 
 		@Override
 		@DisplayName("ExtendedFoo#foo(Object)")
