@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Configuration is parsed and validated when the proxy is created, not at first use.
  */
-class CacheValidationTest {
+final class CacheValidationTest {
 
 	@Test
 	void aDuplicateCacheNameIsRejected() {
@@ -44,7 +44,7 @@ class CacheValidationTest {
 
 	}
 
-	public static class DuplicateNamesImpl implements DuplicateNames {
+	public static final class DuplicateNamesImpl implements DuplicateNames {
 
 		@Override
 		public String one() {
