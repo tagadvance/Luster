@@ -27,7 +27,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.3")
     testImplementation("org.mockito:mockito-core:5.23.0")
 
-    api("org.slf4j:slf4j-api:2.0.18")
+    api("org.slf4j:slf4j-api:2.0.19")
     api("org.jspecify:jspecify:1.0.1")
 
     implementation("com.google.guava:guava:33.7.1-jre")
