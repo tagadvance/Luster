@@ -25,7 +25,7 @@ repositories {
 dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.3")
-    testImplementation("org.mockito:mockito-core:5.23.0")
+    testImplementation("org.mockito:mockito-core:5.24.0")
 
     api("org.slf4j:slf4j-api:2.0.19")
     api("org.jspecify:jspecify:1.0.1")
