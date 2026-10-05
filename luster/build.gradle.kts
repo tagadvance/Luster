@@ -30,7 +30,7 @@ dependencies {
     api("org.slf4j:slf4j-api:2.0.20")
     api("org.jspecify:jspecify:1.0.1")
 
-    implementation("com.google.guava:guava:33.7.1-jre")
+    implementation("com.google.guava:guava:33.7.2-jre")
     implementation("com.google.code.gson:gson:2.14.0")
 }
 
